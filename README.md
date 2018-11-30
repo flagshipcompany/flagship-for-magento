@@ -2,7 +2,7 @@
 
 Magento2 module for FlagShip.
 
-#Installation
+# Installation
 
 Unzip the archive and move the folder to @MagentoRoot/app/code.
 
@@ -14,7 +14,7 @@ cd <MagentoRoot>
 composer install
 ```
 
-#Usage
+# Usage
 
 Login to Magento Admin.
 
