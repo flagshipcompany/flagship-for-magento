@@ -9,9 +9,11 @@ Unzip the archive and move the folder to @MagentoRoot/app/code.
 ```
 unzip flagship-for-magento.zip
 cd flagship-for-magento
-mv Flagship <MagentoRoot>/app/code
+mv Flagship <MagentoRoot>/app/code/
 cd <MagentoRoot>
-composer install
+composer require flagshipcompany/flagship-api-sdk:"dev-master"
+bin/magento cache:flush
+bin/magento setup:upgrade
 ```
 
 # Usage
