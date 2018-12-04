@@ -1,6 +1,9 @@
 <?php
 namespace Flagship\Shipping\Controller\Adminhtml\SetToken;
 
+use \Flagship\Shipping\Flagship;
+use \Flagship\Shipping\Exceptions\ValidateTokenException;
+
 class Index extends \Magento\Backend\App\Action{
 
     protected $resultPageFactory;
@@ -20,7 +23,7 @@ class Index extends \Magento\Backend\App\Action{
     public function execute()
     {
         $token = $this->getRequest()->getParam('api_token');
-
+        
         if(empty($token)){
             return  $resultPage = $this->resultPageFactory->create();
         }
@@ -64,7 +67,7 @@ class Index extends \Magento\Backend\App\Action{
 
     protected function setToken($token) : bool {
 
-      if($this->validateToken($token)){
+      if($this->isTokenValid($token)){
         $apiToken = $this->objectManager->create('Flagship\Shipping\Model\SetToken');
         $apiToken->setToken($token);
         $apiToken->save();
@@ -73,27 +76,23 @@ class Index extends \Magento\Backend\App\Action{
       return FALSE;
     }
 
-    protected function validateToken(?string $apiToken) : bool {
-      $curl = curl_init();
-      curl_setopt_array($curl, array(
-        CURLOPT_URL => SMARTSHIP_API_URL."/ship/available_services",
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => "",
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_CUSTOMREQUEST => "GET",
-        CURLOPT_HTTPHEADER => array(
-          "X-Smartship-Token: $apiToken",
-        ),
-      ));
-      $response = curl_exec($curl);
-      $httpcode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-      $errorno = curl_errno($curl);
-      curl_close($curl);
+    protected function isTokenValid(?string $apiToken) : bool {
 
-      if($httpcode === 200 || $httpcode === 201){
-        return TRUE;
-      }
-    return FALSE;
+        if(is_null($apiToken)){
+            return false;
+        }
+
+        $flagship = new Flagship($apiToken,SMARTSHIP_API_URL);
+
+        $validateTokenRequest = $flagship->validateTokenRequest($apiToken);
+
+        try{
+            $validToken = $validateTokenRequest->execute() === 200 ? true : false;
+            return $validToken;
+        }
+        catch(ValidateTokenException $e){
+            return false;
+        }
+
     }
   }
