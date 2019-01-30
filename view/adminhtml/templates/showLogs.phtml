@@ -1,0 +1,13 @@
+<div style="float:right">
+<form action="<?php echo $block->getDownloadLink(); ?>">
+    <button class="action-primary" type="submit" >Download</button><br>    
+</form>
+<br>
+<form action="<?php echo $block->getClearLogsLink(); ?>">
+    <button class="action-primary" type="submit" >Clear Logs</button><br>    
+</form>
+</div>
+<h3><?php echo $block->getTitle(); ?></h3>
+<?php 
+echo $block->getLogsAsString();
+?>

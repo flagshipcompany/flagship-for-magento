@@ -1,6 +1,6 @@
 {
   "name": "flagshipcompany/flagship-for-magento",
-  "description": "Magento2 module that lets you ship with FlagShip",
+  "description": "A module that allows you to ship with flagship",
   "type": "magento2-module",
   "version": "1.0.0",
   "license": [

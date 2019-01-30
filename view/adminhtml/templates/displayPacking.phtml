@@ -1,0 +1,24 @@
+<section class="admin__page-section order-view-packing">
+    <div class="admin__page-section-title">
+        <span class="title">FlagShip Packing Details</span>
+    </div>
+    <div class="admin__page-section-content">
+        <?php
+
+            if(is_null($block->getBoxes())){
+                $packingDetails = 'Please set at least one box';
+            }
+            
+            if($block->isPackingEnabled()){
+                $packingDetails = 'Packing suggestions are disabled. Please enable it under FlagShip Configuration.';
+            }
+            
+            $packings = $block->getPacking();
+            if(!is_null($packings)){
+                $packingDetails = $block->getPackingDetails();    
+            }
+
+            echo $packingDetails;
+        ?>
+    </div>
+</section>

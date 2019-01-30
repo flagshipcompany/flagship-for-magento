@@ -1,0 +1,7 @@
+<?php 
+$orderId = $this->getRequest()->getParam('order_id');
+$backUrl = $this->getUrl('sales/order/view',['order_id' => $orderId]);
+?>
+<form action="<?php echo $backUrl; ?>">
+    <button class="action-primary" type="submit" style="float:right;">&#8592; Back</button><br>    
+</form>

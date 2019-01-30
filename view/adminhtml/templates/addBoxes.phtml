@@ -1,0 +1,25 @@
+<?php $enabled = $block->getPackingsSetting(); ?>
+<?php if($enabled): ?>
+<form>
+    <div class="form">
+        <div class="form-group">
+        <div class="label">
+        <label for="token"><span>Enter Box dimensions (Current store units set to <?php echo $block->getUnits(); ?>)</span></label><br><br>
+            <input type="text" class="form-element input-text admin__control-text" name="model" placeholder="Box Model" required />
+            <input type="text" class="form-element input-text admin__control-text" name="length" placeholder="Length" required />
+            <input type="text" class="form-element input-text admin__control-text" name="width" placeholder="Width" required />
+            <input type="text" class="form-element input-text admin__control-text" name="height" placeholder="Height" required />
+            <input type="text" class="form-element input-text admin__control-text" name="weight" placeholder="Weight" required />
+            <input type="text" class="form-element input-text admin__control-text" name="maxWeight" placeholder="Max Weight Box can carry" required />
+            <button type="submit" class="form-element action-primary scalable save">Save</button>
+      </div>
+  </div>
+</form>
+<?php else: ?>
+    <p>You need to Enable Packings under Configuration to set boxes</p>
+<?php endif; ?>
+<style>
+    .form-element{
+        margin:5px;
+    }
+</style>

@@ -1,0 +1,15 @@
+@font-face {
+  font-family: 'flagship';
+  src:  url('../fonts/flagship.eot?k7p71w');
+  src:  url('../fonts/flagship.eot?k7p71w#iefix') format('embedded-opentype'),
+    url('../fonts/flagship.ttf?k7p71w') format('truetype'),
+    url('../fonts/flagship.woff?k7p71w') format('woff'),
+    url('../fonts/flagship.svg?k7p71w#flagship') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+body .admin__menu .item-manage > a::before{
+	font-family: 'flagship' !important;
+	content: "\e903";
+}
