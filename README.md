@@ -9,7 +9,7 @@ Magento2 module for FlagShip.
 ## Composer Install
 
 ```
-composer require flagshipcompany/flagship-for-magento:1.0.0
+composer require flagshipcompany/flagship-for-magento:dev-master
 composer update 
 bin/magento module:enable Flagship_Shipping
 bin/magento setup:upgrade
