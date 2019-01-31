@@ -72,9 +72,9 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         foreach ($orderItems as $item) {
 
             $items[] =[
-                "length" => $item->getProduct()->getDataByKey('length'),
-                "width" => $item->getProduct()->getDataByKey('width'),
-                "height" => $item->getProduct()->getDataByKey('height'),
+                "length" => is_null($item->getProduct()->getDataByKey('length')) ? $item->getProduct()->getDataByKey('ts_dimensions_length') : $item->getProduct()->getDataByKey('length'),
+                "width" => is_null($item->getProduct()->getDataByKey('width')) ? $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
+                "height" => is_null($item->getProduct()->getDataByKey('height')) ? $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
                 "weight" => $item->getProduct()->getWeight(),
                 "description" => $item->getProduct()->getName()
             ];
