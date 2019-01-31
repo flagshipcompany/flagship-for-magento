@@ -54,7 +54,7 @@ class FlagshipQuote
         $this->url = $url;
         $this->flagshipLogger = $flagshipLogger;
         $this->flagship = $flagship;
-        $this->flagshipLoggingEnabled = $this->flagship->getSettings()["log"];     
+        $this->flagshipLoggingEnabled = $this->flagship->getSettings()["log"];
 
         parent::__construct(
             $scopeConfig,
@@ -160,7 +160,7 @@ class FlagshipQuote
         $residentialFlag = $this->getConfigData('force_residential');
 
         $payload = $this->getPayload($request,$insuranceFlag,$residentialFlag);
-$this->flagship->logInfo(json_encode($payload));
+
         $result = $this->_rateFactory->create();
 
         try{
@@ -172,13 +172,13 @@ $this->flagship->logInfo(json_encode($payload));
             }
             return $result;
         }
-        catch(\Magento\Framework\Exception\LocalizedException $e){ 
+        catch(\Magento\Framework\Exception\LocalizedException $e){
 
             $error = $this->_rateErrorFactory->create();
             $error->setCarrier($this->getCarrierCode());
             $error->setErrorMessage($e->getMessage());
             $result->append($error);
-          
+
             return $result;
         }
     }
@@ -227,7 +227,7 @@ $this->flagship->logInfo(json_encode($payload));
 
         $method->setCarrier($carrier);
         $method->setCarrierTitle('');
-        
+
         $method->setMethod($quote->rate->service->courier_desc);
         $method->setMethodTitle($methodTitle);
 
@@ -367,7 +367,7 @@ $this->flagship->logInfo(json_encode($payload));
             $this->flagship->logError($e->getMessage());
             throw new \Magento\Framework\Exception\LocalizedException(__($e->getMessage()));
         }
-        
+
     }
 
     protected function getShipmentFromFlagship(string $trackingNumber) : \Flagship\Shipping\Objects\Shipment {

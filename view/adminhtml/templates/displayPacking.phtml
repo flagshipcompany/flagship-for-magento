@@ -8,14 +8,14 @@
             if(is_null($block->getBoxes())){
                 $packingDetails = 'Please set at least one box';
             }
-            
+
             if($block->isPackingEnabled()){
                 $packingDetails = 'Packing suggestions are disabled. Please enable it under FlagShip Configuration.';
             }
-            
+
             $packings = $block->getPacking();
             if(!is_null($packings)){
-                $packingDetails = $block->getPackingDetails();    
+                $packingDetails = $block->getPackingDetails();
             }
 
             echo $packingDetails;

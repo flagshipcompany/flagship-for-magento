@@ -13,9 +13,9 @@ class Index extends \Magento\Backend\App\Action{
         $this->resultPageFactory = $resultPageFactory;
         $this->objectManager = $context->getObjectManager();
         $this->flagship = $this->objectManager->get("Flagship\Shipping\Block\Flagship");
-        $this->_logger = $logger; 
-        $this->loggingEnabled = $this->flagship->getSettings()["log"]; 
-        
+        $this->_logger = $logger;
+        $this->loggingEnabled = $this->flagship->getSettings()["log"];
+
     }
 
     public function execute(){
@@ -29,17 +29,17 @@ class Index extends \Magento\Backend\App\Action{
 
         if(isset($model)){
             if($this->createBox($model,$length,$width,$height,$weight,$maxWeight)){
-                $this->_redirect($this->getUrl('shipping/listboxes/Index'));    
-                return $this->messageManager->addSuccessMessage("Success!Box added");
-            }    
-        }        
+
+                return $this->_redirect($this->getUrl('shipping/listboxes/Index'),$this->messageManager->addSuccessMessage("Success!Box added"));
+            }
+        }
         return $this->resultPageFactory->create();
     }
 
     protected function createBox(string $model,string $length,string $width,string $height,string $weight,string $maxWeight) : bool {
-        
+
         $box = $this->objectManager->create('Flagship\Shipping\Model\AddBoxes');
-        
+
         $box->setBoxModel($model);
         $box->setLength($length);
         $box->setWidth($width);
@@ -49,11 +49,11 @@ class Index extends \Magento\Backend\App\Action{
          try{
             $box->save();
             $this->flagship->logInfo('Box '.$model.' added to database');
-            return TRUE;    
+            return TRUE;
         } catch(\Exception $e){
             $this->flagship->logError(__($e->getMessage()));
             $this->messageManager->addErrorMessage(__($e->getMessage()));
         }
-        
+
     }
 }

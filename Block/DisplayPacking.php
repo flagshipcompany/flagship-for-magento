@@ -17,24 +17,33 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->flagship = $flagship;
     }
 
-    public function getPacking() {
+    public function getPacking() : ?array {
 
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         try{
-        $packingRequest = $flagship->packingRequest($this->getPayload());
-        $packings = $packingRequest->execute();
-        $packingDetails = [];
-         foreach ($packings as $packing) {
-            $packingDetails[] = [
-                "box_model" => $packing->getBoxModel(),
-                "items" => $packing->getItems()
-            ];
-        }
-        $this->flagship->logInfo("Retrieved packings from FlagShip. Response Code : ". $packingRequest->getResponseCode());
-        return $packingDetails;
+            if(is_null($this->getBoxes())){
+                return NULL;
+            }
+            $packingRequest = $flagship->packingRequest($this->getPayload());
+            $packings = $packingRequest->execute();
+
+            $packingDetails = [];
+             foreach ($packings as $packing) {
+                $packingDetails[] = [
+                    "box_model" => $packing->getBoxModel(),
+                    "items" => $packing->getItems()
+                ];
+            }
+            $this->flagship->logInfo("Retrieved packings from FlagShip. Response Code : ". $packingRequest->getResponseCode());
+            return $packingDetails;
+
         } catch( PackingException $e){
             $this->flagship->logError("Order #".$this->getOrder()->getId()." ".$e->getMessage().". Response Code : ".$packingRequest->getResponseCode());
+            $packingDetails = [
+                "error" => $e->getMessage()
+            ];
+            return $packingDetails;
         }
     }
 
@@ -79,6 +88,9 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
     public function getPackingDetails() : string {
         $packings = $this->getPacking();
+        if(array_key_exists("error",$packings)){
+            return $packings["error"];
+        }
         $packingDetails='';
         foreach ($packings as $packing) {
             $packingDetails .= 'Use Box Model : <b>'.$packing["box_model"].'</b> to pack <b>'.implode(",",$packing["items"]).'</b><br>';

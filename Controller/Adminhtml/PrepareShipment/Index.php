@@ -49,13 +49,13 @@ class Index extends \Magento\Backend\App\Action
         $token = $this->getToken();
         $payload = $this->getPayload();
         $orderId = $this->getRequest()->getParam('order_id');
-        
+
         $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         if($update){
             $shipmentId = $this->getRequest()->getParam('shipmentId');
             $this->flagship->logInfo('Updating FlagShip Shipment#'.$shipmentId.' for Order#'.$orderId);
-            $this->updateShipment($flagship,$payload,$shipmentId);          
+            $this->updateShipment($flagship,$payload,$shipmentId);
             return $this->_redirect($this->_redirect->getRefererUrl());
         }
         $this->flagship->logInfo('Preparing FlagShip Shipment for Order#'.$orderId);
@@ -68,7 +68,7 @@ class Index extends \Magento\Backend\App\Action
 
             $update = $flagship->editShipmentRequest($payload,$shipmentId);
             $response = $update->execute();
-            
+
             $id = $response->getId();
             $orderId = $this->getRequest()->getParam('order_id');
             $trackingid = $response->getTrackingNumber();
@@ -166,15 +166,18 @@ class Index extends \Magento\Backend\App\Action
         return $this->displayPackings->getItems();
     }
 
-    protected function getPackingBoxes() : array {
-        
+    protected function getPackingBoxes() : ?array {
+
         $packings = $this->displayPackings->getPacking();
         $boxes = [];
+        if(is_null($packings)){
+            return NULL;
+        }
         foreach($packings as $packing){
             $packing["dimensions"] = $this->getBoxWeight($packing);
             $boxes[] = $packing;
         }
-        return $boxes;        
+        return $boxes;
     }
 
     protected function getBoxes() : array {
@@ -182,9 +185,9 @@ class Index extends \Magento\Backend\App\Action
     }
 
     protected function getBoxWeight($box) : array {
-        
+
         $allBoxes = $this->getBoxes();
-        
+
         $boxDimensions = [];
         foreach ($allBoxes as $allBox) {
             $boxDimensions = count($this->checkBoxModel($box,$allBox)) > 0 ? $this->checkBoxModel($box,$allBox) : $boxDimensions;
@@ -193,7 +196,7 @@ class Index extends \Magento\Backend\App\Action
     }
 
     protected function checkBoxModel(array $box,array $allBox) : array {
-        
+
         $boxDimensions = [];
         if($box["box_model"] == $allBox["box_model"]){
             $boxDimensions["weight"] = $this->getBoxTotalWeight($box,$allBox);
@@ -207,7 +210,7 @@ class Index extends \Magento\Backend\App\Action
     protected function getBoxTotalWeight(array $box,array $allBox) : float {
 
         foreach($box["items"] as $item){
-            $weight = $allBox["weight"]+$this->getItemWeight($item);   
+            $weight = $allBox["weight"]+$this->getItemWeight($item);
         }
         return $weight;
     }
@@ -222,7 +225,7 @@ class Index extends \Magento\Backend\App\Action
     }
 
     protected function getItems() : array {
-        return $this->displayPackings->getItems(); 
+        return $this->displayPackings->getItems();
     }
 
     protected function getPayloadItems() : array {
@@ -297,7 +300,7 @@ class Index extends \Magento\Backend\App\Action
           ]
         ];
 
-        if($this->flagship->getSettings()["packings"]){
+        if($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes())){
             $packages['items'] = $this->getPayloadItems();
         }
 
