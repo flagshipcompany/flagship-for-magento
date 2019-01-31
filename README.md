@@ -4,15 +4,29 @@ Magento2 module for FlagShip.
 
 # Installation
 
-Unzip the archive and move the folder to @MagentoRoot/app/code.
+@MagentoRoot
+
+## Composer Install
+```
+composer require flagshipcompany/flagship-for-magento:1.0.0
+composer update 
+bin/magento module:enable Flagship_Shipping
+bin/magento setup:upgrade
+```
+
+## Directory Install
+
+Download flagship-for-magento.zip
 
 ```
 unzip flagship-for-magento.zip
-cd flagship-for-magento
-mv Flagship <MagentoRoot>/app/code/
-cd <MagentoRoot>
-composer require flagshipcompany/flagship-api-sdk:"dev-master"
-bin/magento cache:flush
+cd @MagentoRoot/app/code
+mkdir Flagship
+cd Flagship
+mkdir Shipping
+cd Shipping
+cp ~/flagship-for-magento/* .
+
 bin/magento setup:upgrade
 ```
 
@@ -20,6 +34,7 @@ bin/magento setup:upgrade
 
 Login to Magento Admin.
 
-Under FlagShip Settings, set the API Token.
+Under FlagShip Configuration, set the API Token.
+Make sure that Store address is set under Store > Configuration > General > Store Information
 
 Every order now shows you the option to Ship with FlagShip.
