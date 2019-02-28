@@ -49,7 +49,7 @@ class HideCreateShippingLabel{
     }
 
     protected function updateShipmentCommentForFlagshipShipment(array $trackingDetails) : bool {
-        if(strcasecmp($trackingDetails["carrierCode"],'flagship') === 0 ){
+        if( isset($trackingDetails["carrierCode"]) && strcasecmp($trackingDetails["carrierCode"],'flagship') === 0 ){
             $shipment = $this->getFlagshipShipmentByTrackingNumber($trackingDetails["trackingNumber"]);
             $this->updateShipmentComment($shipment[0]);
             return TRUE;
