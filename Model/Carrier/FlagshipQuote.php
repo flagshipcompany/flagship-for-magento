@@ -221,7 +221,7 @@ class FlagshipQuote
     protected function prepareShippingMethods($quote){
 
         $methodTitle = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
-        $carrier = in_array($quote->rate->service->courier_desc, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
+        $carrier = in_array($methodTitle, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
 
         $method = $this->_rateMethodFactory->create();
 
@@ -265,7 +265,7 @@ class FlagshipQuote
         $from_postcode = $this->_scopeConfig->getValue(
                             'general/store_information/postcode',
                             \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-
+        $toCity = empty($request->getDestCity()) ? 'Toronto' : $request->getDestCity();
         $from = [
             "city"  => $from_city,
             "country"   => $from_country,
@@ -274,7 +274,7 @@ class FlagshipQuote
             "is_commercial" => true
         ];
         $to = [
-            "city" => $request->getDestCity(),
+            "city" => $toCity,
             "country"=> $request->getDestCountryId(),
             "state"=> $request->getDestRegionCode(),
             "postal_code"=> $request->getDestPostcode(),
@@ -296,7 +296,9 @@ class FlagshipQuote
                 "payer"=> "F"
         ];
 
-        $options = [];
+        $options = [
+            "address_correction" => true
+        ];
         $insuranceValue = $this->getInsuranceAmount();
         if($insuranceFlag && $insuranceValue > 0 ){
             $options["insurance"] = [

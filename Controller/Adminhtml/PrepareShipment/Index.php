@@ -137,7 +137,7 @@ class Index extends \Magento\Backend\App\Action
         return $this->flagship->getSettings()["token"];
     }
 
-    protected function getOrder() : \Magento\Sales\Model\Order\Interceptor {
+    protected function getOrder() : \Magento\Sales\Model\Order {
         $this->orderId = $this->getRequest()->getParam('order_id');
         $order = $this->orderRepository->get($this->orderId);
         return $order;

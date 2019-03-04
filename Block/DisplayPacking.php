@@ -123,7 +123,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return 'imperial';
     }
 
-    protected function getOrder() : \Magento\Sales\Model\Order\Interceptor {
+    protected function getOrder() : \Magento\Sales\Model\Order {
         $orderId = $this->getRequest()->getParam('order_id');
         $order = $this->orderRepository->get($orderId);
         return $order;
