@@ -220,15 +220,16 @@ class FlagshipQuote
 
     protected function prepareShippingMethods($quote){
 
-        $methodTitle = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
-        $carrier = in_array($methodTitle, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
+        $courierName = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
+        $carrier = in_array($courierName, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
+        $methodTitle = substr($courierName, strpos($courierName,' '));
 
         $method = $this->_rateMethodFactory->create();
 
         $method->setCarrier($carrier);
-        $method->setCarrierTitle('');
+        $method->setCarrierTitle($quote->rate->service->courier_name);
 
-        $method->setMethod($quote->rate->service->courier_desc);
+        $method->setMethod($quote->rate->service->courier_code);
         $method->setMethodTitle($methodTitle);
 
         $amount = $quote->getTotal();
