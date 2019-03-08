@@ -105,8 +105,32 @@ class FlagshipQuote
 
         if(stristr($tracking, 'Unconfirmed') === false ){ //shipment confirmed
             $shipment = $this->getShipmentFromFlagship($tracking);
-            $url = SMARTSHIP_WEB_URL.'/shipping/'.$shipment->getId().'/overview';
+
             $status->setCarrierTitle($shipment->getCourierDescription());
+
+            $courierName = $shipment->getCourierName();
+            $trackingNumber = $shipment->getTrackingNumber();
+
+            switch($courierName){
+                case 'ups':
+                    $url = 'http://wwwapps.ups.com/WebTracking/track?HTMLVersion=5.0&loc=en_CA&Requester=UPSHome&trackNums='.$trackingNumber.'&track.x=Track';
+                    break;
+
+                case 'dhl':
+                    $url = 'http://www.dhl.com/en/express/tracking.html?AWB='.$trackingNumber.'&brand=DHL';
+                    break;
+
+                case 'fedex':
+                    $url = 'http://www.fedex.com/Tracking?ascend_header=1&clienttype=dotcomreg&track=y&cntry_code=ca_english&language=english&tracknumbers='.$trackingNumber.'&action=1&language=null&cntry_code=ca_english';
+                    break;
+
+                case 'purolator':
+                    $url = 'https://eshiponline.purolator.com/ShipOnline/Public/Track/TrackingDetails.aspx?pup=Y&pin='.$trackingNumber.'&lang=E';
+                    break;
+
+                case 'canpar':
+                    $url = 'https://www.canpar.com/en/track/TrackingAction.do?reference='.$trackingNumber.'&locale=en';
+                    break;
 
         }
 
