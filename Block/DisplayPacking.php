@@ -25,8 +25,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             if(is_null($this->getBoxes())){
                 return NULL;
             }
-            $packingRequest = $flagship->packingRequest($this->getPayload());
-            $packings = $packingRequest->execute();
+            $packings = $this->getPackingsFromFlagship($this->getPayload());
 
             $packingDetails = [];
              foreach ($packings as $packing) {
@@ -35,11 +34,9 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
                     "items" => $packing->getItems()
                 ];
             }
-            $this->flagship->logInfo("Retrieved packings from FlagShip. Response Code : ". $packingRequest->getResponseCode());
             return $packingDetails;
 
-        } catch( PackingException $e){
-            $this->flagship->logError("Order #".$this->getOrder()->getId()." ".$e->getMessage().". Response Code : ".$packingRequest->getResponseCode());
+        } catch( \Exception $e){
             $packingDetails = [
                 "error" => $e->getMessage()
             ];
@@ -68,22 +65,36 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     public function getItems() : array {
         $order = $this->getOrder();
         $orderItems = $order->getAllItems();
-        $items = [];
+        $this->items = [];
         foreach ($orderItems as $item) {
-
-            $items[] =[
-                "length" => is_null($item->getProduct()->getDataByKey('length')) ? $item->getProduct()->getDataByKey('ts_dimensions_length') : $item->getProduct()->getDataByKey('length'),
-                "width" => is_null($item->getProduct()->getDataByKey('width')) ? $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
-                "height" => is_null($item->getProduct()->getDataByKey('height')) ? $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
-                "weight" => $item->getProduct()->getWeight(),
-                "description" => $item->getProduct()->getName()
-            ];
+            $this->getItemsforPayload($item);
         }
-        return $items;
+        return $this->items;
+    }
+
+    protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item){
+
+        $qty = $item->getQtyOrdered();
+        $itemsArray = $this->getItemsArray($item);
+        for ($i = 0; $i < $qty ; $i++) {
+            $this->items[] = $itemsArray;
+        }
+
+        return $this->items;
     }
 
     public function isPackingEnabled() : int {
         return !$this->flagship->getSettings()["packings"];
+    }
+
+    public function getPayload() : array {
+
+        $payload = [
+            "items" => $this->getItems(),
+            "boxes" => $this->getBoxes(),
+            "units" => $this->getUnits()
+        ];
+        return $payload;
     }
 
     public function getPackingDetails() : string {
@@ -92,10 +103,63 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             return $packings["error"];
         }
         $packingDetails='';
+        $packingItemDescription = $packings[0]["items"][0];
+
         foreach ($packings as $packing) {
-            $packingDetails .= 'Use Box Model : <b>'.$packing["box_model"].'</b> to pack <b>'.implode(",",$packing["items"]).'</b><br>';
+
+            $itemsCount = array_count_values($packing["items"]);
+
+            $packingContent = 'Use Box Model : <b>'.$packing["box_model"].'</b> to pack <br>'.$this->getPackingList($itemsCount);
+
+            $packingDetails .= $packingContent;
         }
         return $packingDetails;
+    }
+
+    public function getPackingsFromFlagship(array $payload) : \Flagship\Shipping\Collections\PackingCollection
+    {
+        $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
+
+        try{
+            $packingRequest = $flagship->packingRequest($payload);
+            $packings = $packingRequest->execute();
+            $this->flagship->logInfo("Retrieved packings from FlagShip. Response Code : ". $packingRequest->getResponseCode());
+
+            return $packings;
+
+        } catch( PackingException $e){
+            $this->flagship->logError("Order #".$this->getOrder()->getId()." ".$e->getMessage().". Response Code : ".$packingRequest->getResponseCode());
+        }
+
+    }
+
+    protected function getPackingList(array $itemsCount) : string {
+        $packingContent = '';
+        foreach ($itemsCount as $key => $value) {
+            $packingContent .= '<span style="margin-left:5%;"><b>'.$value.'</b> units of <b>'.$key.'</b></span><br>';
+        }
+        return $packingContent;
+    }
+
+    // protected function getItemsforPayload($item){
+    //     $items = [];
+    //     $qtyOrdered = $item->getQtyOrdered();
+    //     $itemArray = $this->getItemsArray($item);
+    //     for($i=0;$i<$qtyOrdered;$i++){
+    //         $items[] = $itemArray;
+    //     }
+    //     return $items;
+    // }
+
+    protected function getItemsArray(\Magento\Sales\Model\Order\Item $item) : array
+    {
+        return [
+                "length" => is_null($item->getProduct()->getDataByKey('length')) ? $item->getProduct()->getDataByKey('ts_dimensions_length') : $item->getProduct()->getDataByKey('length'),
+                "width" => is_null($item->getProduct()->getDataByKey('width')) ? $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
+                "height" => is_null($item->getProduct()->getDataByKey('height')) ? $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
+                "weight" => $item->getProduct()->getWeight(),
+                "description" => $item->getProduct()->getName()
+            ];
     }
 
     protected function getBoxesValue(array $result) : ?array {
@@ -103,16 +167,6 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             return $this->getBoxesArray($result);
         }
         return NULL;
-    }
-
-    protected function getPayload() : array {
-
-        $payload = [
-            "items" => $this->getItems(),
-            "boxes" => $this->getBoxes(),
-            "units" => $this->getUnits()
-        ];
-        return $payload;
     }
 
     protected function getUnits() : string {

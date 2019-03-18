@@ -45,7 +45,8 @@ class FlagshipQuote
         \Magento\Framework\App\ResourceConnection $resource,
         \Magento\Backend\Model\Url $url,
         \Flagship\Shipping\Logger\Logger $flagshipLogger,
-        \Flagship\Shipping\Block\Flagship $flagship
+        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Block\DisplayPacking $packing
     ) {
         $this->objectManager = $objectManager;
         $this->request = $request;
@@ -55,6 +56,7 @@ class FlagshipQuote
         $this->flagshipLogger = $flagshipLogger;
         $this->flagship = $flagship;
         $this->flagshipLoggingEnabled = $this->flagship->getSettings()["log"];
+        $this->packing = $packing;
 
         parent::__construct(
             $scopeConfig,
@@ -132,6 +134,7 @@ class FlagshipQuote
                     $url = 'https://www.canpar.com/en/track/TrackingAction.do?reference='.$trackingNumber.'&locale=en';
                     break;
 
+            }
         }
 
         $status->setTracking($tracking);
@@ -192,7 +195,7 @@ class FlagshipQuote
             $quotes = $this->getQuotes($payload);
 
             foreach ($quotes as $quote) {
-                $result->append($this->prepareShippingMethods($quote));
+                $result->append($this->prepareShippingMethods($quote,$payload));
             }
             return $result;
         }
@@ -242,7 +245,7 @@ class FlagshipQuote
         return NULL;
     }
 
-    protected function prepareShippingMethods($quote){
+    protected function prepareShippingMethods($quote,$payload){
 
         $courierName = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
         $carrier = in_array($courierName, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
@@ -273,7 +276,7 @@ class FlagshipQuote
             $token = isset($this->flagship->getSettings()["token"]) ? $this->flagship->getSettings()["token"] : NULL ;
             return $token;
         } catch(\Exception $e){
-
+            $this->flagship->logError($e->getMessage());
         }
     }
 
@@ -363,18 +366,52 @@ class FlagshipQuote
         return 'imperial';
     }
 
-    protected function getItemsArray() : array {
+    protected function getPayloadForPacking(){
         $cartItems = $this->cart->getQuote()->getAllVisibleItems();
-        $items = [];
+        $this->items = [];
         foreach ($cartItems as $item) {
 
             $weight = $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight();
             $temp = [
-                'width' => '1',
-                'height' => '1',
-                'length' => '1',
-                'weight' => $weight,
-                'description' => $item->getProduct()->getName(),
+                "length" => is_null($item->getProduct()->getDataByKey('length')) ? $item->getProduct()->getDataByKey('ts_dimensions_length') : $item->getProduct()->getDataByKey('length'),
+                "width" => is_null($item->getProduct()->getDataByKey('width')) ? $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
+                "height" => is_null($item->getProduct()->getDataByKey('height')) ? $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
+                "weight" => $weight,
+                "description" => $item->getProduct()->getName()
+            ];
+           $this->getPayloadItems($temp,$item);
+        }
+
+        $payload = [
+            "items" => $this->items,
+            "boxes" => $this->packing->getBoxes(),
+            "units" => $this->getUnits()
+        ];
+
+        return $payload;
+    }
+
+    protected function getPayloadItems(array $temp,\Magento\Quote\Model\Quote\Item $item)
+    {
+        for($i=0;$i<$item->getQty();$i++){
+            $this->items[] = $temp;
+        }
+        return $this->items;
+
+    }
+
+    protected function getItemsArray() : array {
+
+        $packings = $this->packing->getPackingsFromFlagship($this->getPayloadForPacking());
+        $items = [];
+
+        foreach ($packings as $packing) {
+            $temp = [
+                'width' => $packing->getWidth(),
+                'height' => $packing->getHeight(),
+                'length' => $packing->getLength(),
+                'weight' => $packing->getWeight(),
+                'description' => $packing->getBoxModel()
             ];
             $items[] = $temp;
         }
