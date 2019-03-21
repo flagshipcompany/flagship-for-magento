@@ -184,7 +184,7 @@ class Index extends \Magento\Backend\App\Action
         return $this->displayPackings->getBoxes();
     }
 
-    protected function getBoxWeight($box) : array {
+    protected function getBoxWeight(array $box) : array {
 
         $allBoxes = $this->getBoxes();
 

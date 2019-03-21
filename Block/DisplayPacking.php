@@ -67,20 +67,10 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $orderItems = $order->getAllItems();
         $this->items = [];
         foreach ($orderItems as $item) {
-            $this->getItemsforPayload($item);
+            $this->items = $this->getItemsforPayload($item);
         }
-        return $this->items;
-    }
-
-    protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item){
-
-        $qty = $item->getQtyOrdered();
-        $itemsArray = $this->getItemsArray($item);
-        for ($i = 0; $i < $qty ; $i++) {
-            $this->items[] = $itemsArray;
-        }
-
-        return $this->items;
+        $items = $this->items;
+        return $items;
     }
 
     public function isPackingEnabled() : int {
@@ -97,7 +87,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return $payload;
     }
 
-    public function getPackingDetails() : string {
+    public function getPackingDetails() : array {
         $packings = $this->getPacking();
         if(array_key_exists("error",$packings)){
             return $packings["error"];
@@ -109,11 +99,11 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
             $itemsCount = array_count_values($packing["items"]);
 
-            $packingContent = 'Use Box Model : <b>'.$packing["box_model"].'</b> to pack <br>'.$this->getPackingList($itemsCount);
-
-            $packingDetails .= $packingContent;
+            $packingContent[] = [
+                $packing["box_model"] => $this->getPackingList($itemsCount)
+            ];
         }
-        return $packingDetails;
+        return $packingContent;
     }
 
     public function getPackingsFromFlagship(array $payload) : \Flagship\Shipping\Collections\PackingCollection
@@ -133,23 +123,25 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
     }
 
-    protected function getPackingList(array $itemsCount) : string {
-        $packingContent = '';
+    protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item){
+
+        $qty = $item->getQtyOrdered();
+        $itemsArray = $this->getItemsArray($item);
+        for ($i = 0; $i < $qty ; $i++) {
+            $this->items[] = $itemsArray;
+        }
+
+        return $this->items;
+    }
+
+
+    protected function getPackingList(array $itemsCount) : array {
+        $packingContent = [];
         foreach ($itemsCount as $key => $value) {
-            $packingContent .= '<span style="margin-left:5%;"><b>'.$value.'</b> units of <b>'.$key.'</b></span><br>';
+            $packingContent[$key] = $value;
         }
         return $packingContent;
     }
-
-    // protected function getItemsforPayload($item){
-    //     $items = [];
-    //     $qtyOrdered = $item->getQtyOrdered();
-    //     $itemArray = $this->getItemsArray($item);
-    //     for($i=0;$i<$qtyOrdered;$i++){
-    //         $items[] = $itemArray;
-    //     }
-    //     return $items;
-    // }
 
     protected function getItemsArray(\Magento\Sales\Model\Order\Item $item) : array
     {
@@ -158,7 +150,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
                 "width" => is_null($item->getProduct()->getDataByKey('width')) ? $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
                 "height" => is_null($item->getProduct()->getDataByKey('height')) ? $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
                 "weight" => $item->getProduct()->getWeight(),
-                "description" => $item->getProduct()->getName()
+                "description" => $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
             ];
     }
 
