@@ -63,6 +63,110 @@ class Index extends \Magento\Backend\App\Action
         return $this->_redirect($this->getUrl('sales/order/view',['order_id' => $orderId]));
     }
 
+    public function getToken() : ?string {
+        return $this->flagship->getSettings()["token"];
+    }
+
+    public function getOrder() : \Magento\Sales\Model\Order {
+        $this->orderId = $this->getRequest()->getParam('order_id');
+        $order = $this->orderRepository->get($this->orderId);
+        return $order;
+    }
+
+    public function getPayload() : array {
+
+        $store = $this->getStore();
+
+        $country = is_null($store->getConfig('general/store_information/country_id')) ? '' : $store->getConfig('general/store_information/country_id') ;
+        $stateCode = is_null($store->getConfig('general/store_information/region_id')) ? '' : $store->getConfig('general/store_information/region_id');
+        $state = empty($stateCode) ? $stateCode : $this->getStateCode($stateCode);
+        $name  = is_null($store->getConfig('general/store_information/name')) ? '': $store->getConfig('general/store_information/name');
+        $address = is_null($store->getConfig('general/store_information/street_line1')) ? '': $store->getConfig('general/store_information/street_line1');
+        $suite = is_null($store->getConfig('general/store_information/street_line2')) ? '': $store->getConfig('general/store_information/street_line2');
+        $city = is_null($store->getConfig('general/store_information/city')) ? '': $store->getConfig('general/store_information/city');
+        $postcode = is_null($store->getConfig('general/store_information/postcode')) ? '': $store->getConfig('general/store_information/postcode');
+        $phone = is_null($store->getConfig('general/store_information/phone')) ? '': $store->getConfig('general/store_information/phone');
+
+        $from = [
+          'name' => $name,
+          'attn' => $name,
+          'address' => $address,
+          'suite' => $suite,
+          'city' => $city,
+          'country' => $country,
+          'state' => $state,
+          'postal_code' => $postcode,
+          'phone' => $phone,
+          'is_commercial' => 'true'
+        ];
+
+
+        $shippingAddress = $this->getShippingAddress();
+        $suite = isset($shippingAddress->getStreet()[1]) ? $shippingAddress->getStreet()[1] : NULL ;
+        $name = is_null($shippingAddress->getCompany()) ? $shippingAddress->getFirstName() : $shippingAddress->getCompany();
+        $attn = strlen($shippingAddress->getFirstName().' '.$shippingAddress->getLastName()) > 21 ? $shippingAddress->getFirstName() : $shippingAddress->getFirstName().' '.$shippingAddress->getLastName();
+        $to = [
+          'name' => $name,
+          'attn' => $attn,
+          'address' => $shippingAddress->getStreet()[0],
+          'suite' => $suite,
+          'city' => $shippingAddress->getCity(),
+          'country' => $shippingAddress->getCountryId(),
+          'state' => $this->getStateCode( $shippingAddress->getRegionId() ),
+          'postal_code' => $shippingAddress->getPostCode(),
+          'phone' => $shippingAddress->getTelephone(),
+        ];
+
+        if($store->getConfig('carriers/flagship/force_residential')){
+            $to['is_commercial'] = false;
+        }
+
+        $packages = [
+          'units' => $this->getPackageUnits(),
+          'type' => 'package',
+          'items' => [
+            0 =>
+            [
+                'length' => 1,
+                'width' => 1,
+                'height'=> 1,
+                'weight' => $this->getTotalWeight()
+            ]
+          ]
+        ];
+
+        if($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes())){
+            $packages['items'] = $this->getPayloadItems();
+        }
+
+        $options = [
+          'signature_required' => false,
+          'reference' => 'Magento Order# '.$this->getOrder()->getIncrementId()
+        ];
+
+        $insuranceValue = $this->getInsuranceValue();
+        if($store->getConfig('carriers/flagship/insuranceflag') && $insuranceValue != 0){
+            $options['insurance'] = [
+                'value' => $insuranceValue,
+                'description' => 'insurance'
+            ];
+        }
+
+        $payment = [
+          'payer' => 'F'
+        ];
+
+        $payload = [
+          "from" => $from,
+          "to"  => $to,
+          "packages"  => $packages,
+          "options" => $options,
+          "payment" => $payment
+        ];
+
+        return $payload;
+    }
+
     protected function updateShipment(Flagship $flagship, array $payload,int $shipmentId) : \Magento\Framework\Message\Manager {
         try{
 
@@ -131,16 +235,6 @@ class Index extends \Magento\Backend\App\Action
         $this->getOrder()->setData('flagship_shipment_id',$id);
         $this->createShipment($id);
         return 0;
-    }
-
-    protected function getToken() : ?string {
-        return $this->flagship->getSettings()["token"];
-    }
-
-    protected function getOrder() : \Magento\Sales\Model\Order {
-        $this->orderId = $this->getRequest()->getParam('order_id');
-        $order = $this->orderRepository->get($this->orderId);
-        return $order;
     }
 
     protected function getShippingAddress() : \Magento\Sales\Model\Order\Address {
@@ -236,100 +330,6 @@ class Index extends \Magento\Backend\App\Action
             $payloadItems[] = $item["dimensions"];
         }
         return $payloadItems;
-    }
-
-    protected function getPayload() : array {
-
-        $store = $this->getStore();
-
-        $country = is_null($store->getConfig('general/store_information/country_id')) ? '' : $store->getConfig('general/store_information/country_id') ;
-        $stateCode = is_null($store->getConfig('general/store_information/region_id')) ? '' : $store->getConfig('general/store_information/region_id');
-        $state = empty($stateCode) ? $stateCode : $this->getStateCode($stateCode);
-        $name  = is_null($store->getConfig('general/store_information/name')) ? '': $store->getConfig('general/store_information/name');
-        $address = is_null($store->getConfig('general/store_information/street_line1')) ? '': $store->getConfig('general/store_information/street_line1');
-        $suite = is_null($store->getConfig('general/store_information/street_line2')) ? '': $store->getConfig('general/store_information/street_line2');
-        $city = is_null($store->getConfig('general/store_information/city')) ? '': $store->getConfig('general/store_information/city');
-        $postcode = is_null($store->getConfig('general/store_information/postcode')) ? '': $store->getConfig('general/store_information/postcode');
-        $phone = is_null($store->getConfig('general/store_information/phone')) ? '': $store->getConfig('general/store_information/phone');
-
-        $from = [
-          'name' => $name,
-          'attn' => $name,
-          'address' => $address,
-          'suite' => $suite,
-          'city' => $city,
-          'country' => $country,
-          'state' => $state,
-          'postal_code' => $postcode,
-          'phone' => $phone,
-          'is_commercial' => 'true'
-        ];
-
-
-        $shippingAddress = $this->getShippingAddress();
-        $suite = isset($shippingAddress->getStreet()[1]) ? $shippingAddress->getStreet()[1] : NULL ;
-        $name = is_null($shippingAddress->getCompany()) ? $shippingAddress->getFirstName() : $shippingAddress->getCompany();
-        $attn = strlen($shippingAddress->getFirstName().' '.$shippingAddress->getLastName()) > 21 ? $shippingAddress->getFirstName() : $shippingAddress->getFirstName().' '.$shippingAddress->getLastName();
-        $to = [
-          'name' => $name,
-          'attn' => $attn,
-          'address' => $shippingAddress->getStreet()[0],
-          'suite' => $suite,
-          'city' => $shippingAddress->getCity(),
-          'country' => $shippingAddress->getCountryId(),
-          'state' => $this->getStateCode( $shippingAddress->getRegionId() ),
-          'postal_code' => $shippingAddress->getPostCode(),
-          'phone' => $shippingAddress->getTelephone(),
-        ];
-
-        if($store->getConfig('carriers/flagship/force_residential')){
-            $to['is_commercial'] = false;
-        }
-
-        $packages = [
-          'units' => $this->getPackageUnits(),
-          'type' => 'package',
-          'items' => [
-            0 =>
-            [
-                'length' => 1,
-                'width' => 1,
-                'height'=> 1,
-                'weight' => $this->getTotalWeight()
-            ]
-          ]
-        ];
-
-        if($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes())){
-            $packages['items'] = $this->getPayloadItems();
-        }
-
-        $options = [
-          'signature_required' => false,
-          'reference' => 'Magento Order# '.$this->getOrder()->getIncrementId()
-        ];
-
-        $insuranceValue = $this->getInsuranceValue();
-        if($store->getConfig('carriers/flagship/insuranceflag') && $insuranceValue != 0){
-            $options['insurance'] = [
-                'value' => $insuranceValue,
-                'description' => 'insurance'
-            ];
-        }
-
-        $payment = [
-          'payer' => 'F'
-        ];
-
-        $payload = [
-          "from" => $from,
-          "to"  => $to,
-          "packages"  => $packages,
-          "options" => $options,
-          "payment" => $payment
-        ];
-
-        return $payload;
     }
 
     protected function getInsuranceValue() : float {
