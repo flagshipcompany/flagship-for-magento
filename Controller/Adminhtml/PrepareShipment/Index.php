@@ -215,7 +215,8 @@ class Index extends \Magento\Backend\App\Action
         $items = $order->getAllItems();
         $weight = 0;
         foreach($items as $item){
-            $weight += ($item->getWeight() * $item->getQtyToShip());
+            $itemWeight = is_null($item->getWeight()) ? 1 : $item->getWeight();
+            $weight += ($itemWeight * $item->getQtyToShip());
         }
         if($weight < 1){
             return 1;

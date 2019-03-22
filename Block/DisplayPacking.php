@@ -146,10 +146,14 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     protected function getItemsArray(\Magento\Sales\Model\Order\Item $item) : array
     {
         return [
-                "length" => is_null($item->getProduct()->getDataByKey('length')) ? $item->getProduct()->getDataByKey('ts_dimensions_length') : $item->getProduct()->getDataByKey('length'),
-                "width" => is_null($item->getProduct()->getDataByKey('width')) ? $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
-                "height" => is_null($item->getProduct()->getDataByKey('height')) ? $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
-                "weight" => $item->getProduct()->getWeight(),
+                "length" => is_null($item->getProduct()->getDataByKey('length')) ? (is_null($item->getProduct()->getDataByKey('ts_dimensions_length')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_length') ) : $item->getProduct()->getDataByKey('length'),
+
+                "width" => is_null($item->getProduct()->getDataByKey('width')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_width')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
+
+                "height" => is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
+                
+                "weight" => is_null($item->getProduct()->getWeight()) ? 1 : $item->getProduct()->getWeight(),
+
                 "description" => $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
             ];
     }
