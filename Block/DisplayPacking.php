@@ -77,7 +77,12 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return !$this->flagship->getSettings()["packings"];
     }
 
-    public function getPayload() : array {
+    public function getPayload() : ?array {
+
+        if(is_null($this->getBoxes())){
+            $this->flagship->logError("Packing Boxes not set");
+            return NULL;
+        }
 
         $payload = [
             "items" => $this->getItems(),
@@ -106,8 +111,12 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return $packingContent;
     }
 
-    public function getPackingsFromFlagship(array $payload) : \Flagship\Shipping\Collections\PackingCollection
+    public function getPackingsFromFlagship(?array $payload) : ?\Flagship\Shipping\Collections\PackingCollection
     {
+        if(is_null($payload)){
+            $this->flagship->logError("Payload is NULL. Payload returned is - ".json_encode($payload));
+            return NULL;
+        }
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         try{
@@ -121,6 +130,24 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             $this->flagship->logError("Order #".$this->getOrder()->getId()." ".$e->getMessage().". Response Code : ".$packingRequest->getResponseCode());
         }
 
+    }
+    /*
+     *@params \Magento\Sales\Model\Order\Item or \Magento\Quote\Model\Quote\Item
+     */
+
+    public function getItemsArray($item) : array
+    {
+        return [
+                "length" => is_null($item->getProduct()->getDataByKey('length')) ? (is_null($item->getProduct()->getDataByKey('ts_dimensions_length')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_length') ) : $item->getProduct()->getDataByKey('length'),
+
+                "width" => is_null($item->getProduct()->getDataByKey('width')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_width')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
+
+                "height" => is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
+
+                "weight" => is_null($item->getProduct()->getWeight()) ? 1 : $item->getProduct()->getWeight(),
+
+                "description" => $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
+            ];
     }
 
     protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item){
@@ -141,21 +168,6 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             $packingContent[$key] = $value;
         }
         return $packingContent;
-    }
-
-    protected function getItemsArray(\Magento\Sales\Model\Order\Item $item) : array
-    {
-        return [
-                "length" => is_null($item->getProduct()->getDataByKey('length')) ? (is_null($item->getProduct()->getDataByKey('ts_dimensions_length')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_length') ) : $item->getProduct()->getDataByKey('length'),
-
-                "width" => is_null($item->getProduct()->getDataByKey('width')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_width')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
-
-                "height" => is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
-                
-                "weight" => is_null($item->getProduct()->getWeight()) ? 1 : $item->getProduct()->getWeight(),
-
-                "description" => $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
-            ];
     }
 
     protected function getBoxesValue(array $result) : ?array {

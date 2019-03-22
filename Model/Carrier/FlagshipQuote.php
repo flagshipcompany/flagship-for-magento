@@ -366,20 +366,20 @@ class FlagshipQuote
         return 'imperial';
     }
 
-    protected function getPayloadForPacking(){
+    protected function getPayloadForPacking() : ?array {
         $cartItems = $this->cart->getQuote()->getAllVisibleItems();
         $this->items = [];
         foreach ($cartItems as $item) {
 
             $weight = $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight();
-            $temp = [
-                "length" => is_null($item->getProduct()->getDataByKey('length')) ? $item->getProduct()->getDataByKey('ts_dimensions_length') : $item->getProduct()->getDataByKey('length'),
-                "width" => is_null($item->getProduct()->getDataByKey('width')) ? $item->getProduct()->getDataByKey('ts_dimensions_width') : $item->getProduct()->getDataByKey('width'),
-                "height" => is_null($item->getProduct()->getDataByKey('height')) ? $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
-                "weight" => $weight,
-                "description" => $item->getProduct()->getName()
-            ];
+            $temp = $this->packing->getItemsArray($item);
+            $temp["weight"] = $weight;
            $this->getPayloadItems($temp,$item);
+        }
+
+        if(is_null($this->packing->getBoxes())){
+            $this->flagship->logError("Packing Boxes not set");
+            return NULL;
         }
 
         $payload = [
