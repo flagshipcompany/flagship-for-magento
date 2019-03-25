@@ -150,8 +150,10 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             ];
     }
 
-    protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item){
-
+    protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item) : ?array {
+        if(strcasecmp($item->getProductType(), 'configurable') == 0){
+            return NULL;
+        }
         $qty = $item->getQtyOrdered();
         $itemsArray = $this->getItemsArray($item);
         for ($i = 0; $i < $qty ; $i++) {
