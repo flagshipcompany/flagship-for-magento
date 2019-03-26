@@ -37,15 +37,45 @@ class HideCreateShippingLabel{
         $orderId = $this->order->getId();
 
         if($this->isShipmentConfirmed($shipment,$orderId)){
-            $this->createButtonForShipmentTracking($subject); 
+            $this->createButtonForShipmentTracking($subject);
             $this->updateShipmentTrackingData($shipment->getTrackingNumber(),$shipment->getLabel());
             $this->updateShipmentComment($shipment);
-            return; 
+            return;
         }
 
         //else - create buttons for confirmation
         $this->createButtonsForShipmentConfirmation($subject,$flagshipId); // shipment is still unconfirmed
         return;
+    }
+
+    public function getFlagshipShipment($id) : \Flagship\Shipping\Objects\Shipment {
+        $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
+        $request = $flagship->getShipmentByIdRequest($id);
+        $shipment = $request->execute();
+        return $shipment;
+    }
+
+    public function isShipmentConfirmed(\Flagship\Shipping\Objects\Shipment $shipment, string $orderId) : bool {
+        if(strcasecmp($shipment->getStatus(),'Prequoted')){
+            $this->flagship->logInfo("FlagShip Shipment# ".$shipment->getId()." for Order# ".$orderId ." is confirmed");
+            return TRUE;
+        }
+        return FALSE;
+    }
+
+    public function updateShipmentTrackingData(string $trackingNumber,string $label) : bool {
+        $shipment = $this->shipment;
+
+        $tracks = $shipment->getAllTracks();
+
+        foreach ($tracks as $track) {
+            $track->setTrackNumber($trackingNumber);
+        }
+
+        $shipment->setShippingLabel(file_get_contents($label));
+
+        $shipment->save();
+        return TRUE;
     }
 
     protected function updateShipmentCommentForFlagshipShipment(array $trackingDetails) : bool {
@@ -105,7 +135,7 @@ class HideCreateShippingLabel{
 
         $shipment = $this->shipment;
         $comments = $shipment->getComments();
-        
+
         if(count($comments) === 0){
 
             $shipment->addComment($newComment);
@@ -115,7 +145,7 @@ class HideCreateShippingLabel{
 
         foreach ($comments as $comment) {
             $comment->setComment($newComment);
-            
+
         }
 
         $shipment->save();
@@ -126,21 +156,6 @@ class HideCreateShippingLabel{
     protected function calculateMarkup(float $flagshipTotal, string $total) : float {
         $markup = (($total - $flagshipTotal)/$flagshipTotal) * 100;
         return ceil($markup);
-    }
-
-    protected function updateShipmentTrackingData(string $trackingNumber,string $label) : bool {
-        $shipment = $this->shipment;
-
-        $tracks = $shipment->getAllTracks();
-
-        foreach ($tracks as $track) {
-            $track->setTrackNumber($trackingNumber);
-        }
-
-        $shipment->setShippingLabel(file_get_contents($label));
-
-        $shipment->save();
-        return TRUE;
     }
 
     protected function createButtonsForShipmentConfirmation(\Magento\Shipping\Block\Adminhtml\View $subject, string $shipmentId) : bool {
@@ -163,21 +178,6 @@ class HideCreateShippingLabel{
               ]
             );
         return TRUE;
-    }
-
-    protected function getFlagshipShipment($id) : \Flagship\Shipping\Objects\Shipment {
-        $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
-        $request = $flagship->getShipmentByIdRequest($id);
-        $shipment = $request->execute();
-        return $shipment;
-    }
-
-    protected function isShipmentConfirmed(\Flagship\Shipping\Objects\Shipment $shipment, string $orderId) : bool {
-        if(strcasecmp($shipment->getStatus(),'Prequoted')){
-            $this->flagship->logInfo("FlagShip Shipment# ".$shipment->getId()." for Order# ".$orderId ." is confirmed");
-            return TRUE;
-        }
-        return FALSE;
     }
 
     protected function getFlagshipShipmentId() : string {
