@@ -38,7 +38,7 @@ class HideCreateShippingLabel{
 
         if($this->isShipmentConfirmed($shipment,$orderId)){
             $this->createButtonForShipmentTracking($subject);
-            $this->updateShipmentTrackingData($shipment->getTrackingNumber(),$shipment->getLabel());
+            $this->updateShipmentTrackingData($shipment);
             $this->updateShipmentComment($shipment);
             return;
         }
@@ -63,12 +63,18 @@ class HideCreateShippingLabel{
         return FALSE;
     }
 
-    public function updateShipmentTrackingData(string $trackingNumber,string $label) : bool {
-        $shipment = $this->shipment;
+    public function updateShipmentTrackingData(\Flagship\Shipping\Objects\Shipment $flagshipShipment,\Magento\Sales\Model\Order\Shipment $shipment = NULL) : bool {
+        if(is_null($shipment)){
+            $shipment = $this->shipment;
+        }
 
+        $trackingNumber = $flagshipShipment->getTrackingNumber();
+        $label = $flagshipShipment->getLabel();
         $tracks = $shipment->getAllTracks();
 
         foreach ($tracks as $track) {
+            $title = strcasecmp($flagshipShipment->getCourierName(), 'fedex') == 0 ? 'FedEx '.$flagshipShipment->getCourierDescription() : $flagshipShipment->getCourierDescription();
+            $track->setTitle($title);
             $track->setTrackNumber($trackingNumber);
         }
 
