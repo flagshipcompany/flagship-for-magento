@@ -374,7 +374,7 @@ class FlagshipQuote
             $weight = $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight();
             $temp = $this->packing->getItemsArray($item);
             $temp["weight"] = $weight;
-           $this->getPayloadItems($temp,$item);
+            $this->getPayloadItems($temp,$item);
         }
 
         if(is_null($this->packing->getBoxes())){
@@ -402,8 +402,15 @@ class FlagshipQuote
 
     protected function getItemsArray() : array {
 
-        $packings = $this->packing->getPackingsFromFlagship($this->getPayloadForPacking());
+        $boxes = $this->packing->getBoxes();
         $items = [];
+        if(is_null($boxes)){
+            $this->getPayloadForPacking();
+            return $this->items;
+        }
+
+        $packings = $this->packing->getPackingsFromFlagship($this->getPayloadForPacking());
+
 
         foreach ($packings as $packing) {
             $temp = [

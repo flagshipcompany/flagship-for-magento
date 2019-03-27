@@ -74,7 +74,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     }
 
     public function isPackingEnabled() : int {
-        return !$this->flagship->getSettings()["packings"];
+        return $this->flagship->getSettings()["packings"];
     }
 
     public function getPayload() : ?array {

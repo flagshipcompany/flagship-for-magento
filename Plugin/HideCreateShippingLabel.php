@@ -69,7 +69,7 @@ class HideCreateShippingLabel{
         }
 
         $trackingNumber = $flagshipShipment->getTrackingNumber();
-        $label = $flagshipShipment->getLabel();
+        $label = $flagshipShipment->getThermalLabel();
         $tracks = $shipment->getAllTracks();
 
         foreach ($tracks as $track) {
