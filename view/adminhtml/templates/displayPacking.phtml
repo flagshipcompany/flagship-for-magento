@@ -7,10 +7,14 @@
 
             if(is_null($block->getBoxes())){
                 $packingDetails = 'Please set at least one box';
+                echo $packingDetails;
+                return;
             }
 
-            if($block->isPackingEnabled()){
+            if(!$block->isPackingEnabled()){
                 $packingDetails = 'Packing suggestions are disabled. Please enable it under FlagShip Configuration.';
+                echo $packingDetails;
+                return;
             }
 
             $packings = $block->getPacking();
@@ -37,7 +41,7 @@
             {
                 $detail = '';
                 foreach ($itemCount as $key => $value) {
-                    $detail .= '<span style="margin-left:5%;"><b>'.$value.'</b> units of <b>'.$key.'</b><br>';
+                    $detail .= '<span style="margin-left:5%;"><b>'.$value.'</b> x <b>'.$key.'</b><br>';
                 }
                 return $detail;
             }

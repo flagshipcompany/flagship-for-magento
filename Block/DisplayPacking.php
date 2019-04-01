@@ -64,13 +64,14 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
     public function getItems() : array {
         $order = $this->getOrder();
-        $orderItems = $order->getAllItems();
+        $orderItems = $order->getAllVisibleItems();
+
         $this->items = [];
         foreach ($orderItems as $item) {
-            $this->items = $this->getItemsforPayload($item);
+            $this->forComplexItem($item);
         }
-        $items = $this->items;
-        return $items;
+
+        return $this->items;
     }
 
     public function isPackingEnabled() : int {
@@ -144,16 +145,27 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
                 "height" => is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : $item->getProduct()->getDataByKey('ts_dimensions_height') : $item->getProduct()->getDataByKey('height'),
 
-                "weight" => is_null($item->getProduct()->getWeight()) ? 1 : $item->getProduct()->getWeight(),
+                "weight" => is_null($item->getProduct()->getWeight()) || $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight(),
 
-                "description" => $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
+                "description" => strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"].' - '.$item->getProductOptions()["simple_name"] : $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
             ];
     }
 
-    protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item) : ?array {
-        if(strcasecmp($item->getProductType(), 'configurable') == 0){
-            return NULL;
+    protected function forComplexItem($item){
+        if($item->getProductType() == 'bundle'){
+            $children = $item->getChildrenItems();
+            foreach ($children as $child) {
+                $this->items = $this->getItemsforPayload($child);
+            }
+            return $this->items;
         }
+        $this->items = $this->getItemsforPayload($item);
+        return $this->items;
+
+    }
+
+    protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item) : ?array {
+
         $qty = $item->getQtyOrdered();
         $itemsArray = $this->getItemsArray($item);
         for ($i = 0; $i < $qty ; $i++) {

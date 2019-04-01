@@ -141,7 +141,8 @@ class Index extends \Magento\Backend\App\Action
 
         $options = [
           'signature_required' => false,
-          'reference' => 'Magento Order# '.$this->getOrder()->getIncrementId()
+          'reference' => 'Magento Order# '.$this->getOrder()->getIncrementId(),
+          'address_correction' => true
         ];
 
         $insuranceValue = $this->getInsuranceValue();
