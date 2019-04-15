@@ -27,7 +27,10 @@ class Index extends \Magento\Backend\App\Action
         \Magento\Directory\Model\RegionFactory $regionFactory,
         \Magento\Sales\Model\Convert\Order $convertOrder,
         \Magento\Sales\Model\Order\Shipment\TrackFactory $trackFactory,
-        \Flagship\Shipping\Logger\Logger $logger
+        \Flagship\Shipping\Logger\Logger $logger,
+        \Magento\InventorySalesAdminUi\Model\GetSalableQuantityDataBySku $getSalableQuantityDataBySku,
+        \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
+        \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku
     )
     {
         $this->objectManager = $context->getObjectManager();
@@ -40,6 +43,9 @@ class Index extends \Magento\Backend\App\Action
         $this->displayPackings = $this->objectManager->get("Flagship\Shipping\Block\DisplayPacking");
         $this->flagship = $this->objectManager->get("Flagship\Shipping\Block\Flagship");
         $this->loggingEnabled = $this->flagship->getSettings()["log"];
+        $this->getSalableQuantityDataBySku = $getSalableQuantityDataBySku;
+        $this->getSourceCodesBySkus = $getSourceCodesBySkus;
+        $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
         parent::__construct($context);
     }
 
@@ -71,6 +77,16 @@ class Index extends \Magento\Backend\App\Action
         $this->orderId = $this->getRequest()->getParam('order_id');
         $order = $this->orderRepository->get($this->orderId);
         return $order;
+    }
+
+    public function getSourceCode(){
+        $items = $this->getOrder()->getAllItems();
+        $skus = [];
+        foreach ($items as $item) {
+            $skus[] = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
+        }
+        
+        return $this->getSourceCodesBySkus->execute($skus)[0];
     }
 
     public function getPayload() : array {
@@ -115,6 +131,7 @@ class Index extends \Magento\Backend\App\Action
           'state' => $this->getStateCode( $shippingAddress->getRegionId() ),
           'postal_code' => $shippingAddress->getPostCode(),
           'phone' => $shippingAddress->getTelephone(),
+          'is_commercial' => true
         ];
 
         if($store->getConfig('carriers/flagship/force_residential')){
