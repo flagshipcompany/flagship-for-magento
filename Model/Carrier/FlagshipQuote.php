@@ -257,6 +257,9 @@ class FlagshipQuote
         $method->setCarrierTitle($quote->rate->service->courier_name);
 
         $method->setMethod($quote->rate->service->courier_code);
+        if($this->getConfigData('delivery_date')){
+            $methodTitle .= ' (Estimated delivery date: '.$quote->rate->service->estimated_delivery_date.')';
+        }
         $method->setMethodTitle($methodTitle);
 
         $amount = $quote->getTotal();
