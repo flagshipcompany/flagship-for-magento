@@ -15,6 +15,7 @@ class UpdateTrackingDetails{
         $this->order = $subject->getOrder();
         $shipments = $this->order->getShipmentsCollection();
         $orderSources = $this->prepareShipment->getSourceCodesForOrderItems();
+
         if( count($shipments) == count($orderSources) ){
             $subject->updateButton('order_ship','class','disabled');
         }
@@ -23,6 +24,21 @@ class UpdateTrackingDetails{
             $flagshipId = $shipment->getDataByKey('flagship_shipment_id');
             $this->updateTrackingDetails($flagshipId,$shipment);
         }
+        $keys = array_keys($orderSources);
+
+        if(count($orderSources) == 1 && in_array('default', $keys)){
+            return;
+        }
+
+        $subject->addButton(
+                'send_to_flagship',
+                [
+                    'label' => __('Send To FlagShip &#8618;'),
+                    'class' => __('action action-secondary scalable'),
+                    'id' => 'send_to_flagship',
+                    'onclick' => sprintf("location.href = '%s';", $subject->getUrl('shipping/prepareShipment',['order_id' => $this->order->getId()]))
+                ]
+            );
         return;
     }
 
