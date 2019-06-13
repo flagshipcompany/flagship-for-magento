@@ -25,7 +25,8 @@ class HideCreateShippingLabel{
 
         $this->order = $subject->getShipment()->getOrder();
         $this->shipment = $subject->getShipment();
-        $flagshipId = $this->order->getDataByKey("flagship_shipment_id");
+        
+        $flagshipId = $this->shipment->getDataByKey("flagship_shipment_id");
 
         if($this->order->hasShipments() && $flagshipId === NULL ){ //magento shipping
             $trackingDetails = $this->getTrackingDetails();
@@ -56,7 +57,7 @@ class HideCreateShippingLabel{
     }
 
     public function isShipmentConfirmed(\Flagship\Shipping\Objects\Shipment $shipment, string $orderId) : bool {
-        if(strcasecmp($shipment->getStatus(),'Prequoted')){
+        if(strcasecmp($shipment->getStatus(),'Prequoted') != 0){
             $this->flagship->logInfo("FlagShip Shipment# ".$shipment->getId()." for Order# ".$orderId ." is confirmed");
             return TRUE;
         }
@@ -187,7 +188,7 @@ class HideCreateShippingLabel{
     }
 
     protected function getFlagshipShipmentId() : string {
-        return $this->order->getDataByKey('flagship_shipment_id');
+        return $this->shipment->getDataByKey('flagship_shipment_id');
     }
 
     protected function createButtonForShipmentTracking(\Magento\Shipping\Block\Adminhtml\View $subject){
