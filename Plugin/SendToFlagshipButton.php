@@ -4,11 +4,21 @@ namespace Flagship\Shipping\Plugin;
 class SendToFlagshipButton{
 
     public function beforeSetLayout(\Magento\Shipping\Block\Adminhtml\Create $subject){
-        
-        $this->order = $subject->getShipment()->getOrder();
-        if(!$this->order->hasShipments()){
-            $orderId = $this->order->getId();
-            $subject->addButton(
+
+        $this->addSendToFlagshipButton($subject);
+        return;
+    }
+
+    public function addSendToFlagshipButton($subject,$showButton = 1){
+        $order = NULL;
+        if(!is_null($subject->getShipment())){
+            $order = $subject->getShipment()->getOrder();
+        }
+        $order = $subject->getOrder();
+
+        if(!$order->hasShipments() && $showButton){
+            $orderId = $order->getId();
+            return $subject->addButton(
                 'send_to_flagship',
                 [
                     'label' => __('Send To FlagShip &#8618;'),
@@ -18,7 +28,7 @@ class SendToFlagshipButton{
                 ]
             );
         }
-        return;
+        return NULL;
     }
 
 }

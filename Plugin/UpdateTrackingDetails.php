@@ -5,10 +5,12 @@ namespace Flagship\Shipping\Plugin;
 class UpdateTrackingDetails{
     public function __construct(
         \Flagship\Shipping\Plugin\HideCreateShippingLabel $tracking,
+        \Flagship\Shipping\Plugin\SendToFlagshipButton $sendToFlagshipButton,
         \Flagship\Shipping\Controller\Adminhtml\PrepareShipment\Index $prepareShipment
     ){
         $this->tracking = $tracking;
         $this->prepareShipment = $prepareShipment;
+        $this->sendToFlagshipButton = $sendToFlagshipButton;
     }
 
     public function beforeSetLayout(\Magento\Sales\Block\Adminhtml\Order\View $subject){
@@ -30,15 +32,8 @@ class UpdateTrackingDetails{
             return;
         }
 
-        $subject->addButton(
-                'send_to_flagship',
-                [
-                    'label' => __('Send To FlagShip &#8618;'),
-                    'class' => __('action action-secondary scalable'),
-                    'id' => 'send_to_flagship',
-                    'onclick' => sprintf("location.href = '%s';", $subject->getUrl('shipping/prepareShipment',['order_id' => $this->order->getId()]))
-                ]
-            );
+        $this->sendToFlagshipButton->addSendToFlagshipButton($subject);
+
         return;
     }
 
