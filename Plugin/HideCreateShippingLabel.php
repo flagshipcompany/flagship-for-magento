@@ -25,7 +25,7 @@ class HideCreateShippingLabel{
 
         $this->order = $subject->getShipment()->getOrder();
         $this->shipment = $subject->getShipment();
-        
+
         $flagshipId = $this->shipment->getDataByKey("flagship_shipment_id");
 
         if($this->order->hasShipments() && $flagshipId === NULL ){ //magento shipping
@@ -44,7 +44,6 @@ class HideCreateShippingLabel{
             return;
         }
 
-        //else - create buttons for confirmation
         $this->createButtonsForShipmentConfirmation($subject,$flagshipId); // shipment is still unconfirmed
         return;
     }

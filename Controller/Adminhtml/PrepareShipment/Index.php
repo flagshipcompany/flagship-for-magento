@@ -31,7 +31,9 @@ class Index extends \Magento\Backend\App\Action
         \Magento\InventorySalesAdminUi\Model\GetSalableQuantityDataBySku $getSalableQuantityDataBySku,
         \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
         \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
-        \Magento\Inventory\Model\SourceRepository $sourceRepository
+        \Magento\Inventory\Model\SourceRepository $sourceRepository,
+        \Flagship\Shipping\Block\DisplayPacking $displayPackings,
+        \Flagship\Shipping\Block\Flagship $flagship
     )
     {
         $this->objectManager = $context->getObjectManager();
@@ -41,8 +43,8 @@ class Index extends \Magento\Backend\App\Action
         $this->convertOrder = $convertOrder;
         $this->trackFactory = $trackFactory;
         $this->_logger = $logger;
-        $this->displayPackings = $this->objectManager->get("Flagship\Shipping\Block\DisplayPacking");
-        $this->flagship = $this->objectManager->get("Flagship\Shipping\Block\Flagship");
+        $this->displayPackings = $displayPackings;
+        $this->flagship = $flagship;
         $this->loggingEnabled = $this->flagship->getSettings()["log"];
         $this->getSalableQuantityDataBySku = $getSalableQuantityDataBySku;
         $this->getSourceCodesBySkus = $getSourceCodesBySkus;
@@ -62,7 +64,7 @@ class Index extends \Magento\Backend\App\Action
         if($update){
             $shipmentId = $this->getRequest()->getParam('shipmentId');
             $payload = $this->getUpdatePayload($flagship,$shipmentId);
-           
+
             $this->flagship->logInfo('Updating FlagShip Shipment#'.$shipmentId.' for Order#'.$orderId);
             $this->updateShipment($flagship,$payload,$shipmentId);
             return $this->_redirect($this->_redirect->getRefererUrl());
@@ -106,12 +108,12 @@ class Index extends \Magento\Backend\App\Action
 
         $from = $this->getSender($source,$store);
         $to = $this->getReceiver($store);
-        
+
         $packages = $this->getPackages($orderItem['items']);
         $options = $this->getOptions($store);
 
         $payment = $this->getPayment();
-        
+
         $payload = [
           "from" => $from,
           "to"  => $to,
@@ -152,7 +154,7 @@ class Index extends \Magento\Backend\App\Action
         $suite = isset($shippingAddress->getStreet()[1]) ? $shippingAddress->getStreet()[1] : NULL ;
         $name = is_null($shippingAddress->getCompany()) ? $shippingAddress->getFirstName() : $shippingAddress->getCompany();
         $attn = strlen($shippingAddress->getFirstName().' '.$shippingAddress->getLastName()) > 21 ? $shippingAddress->getFirstName() : $shippingAddress->getFirstName().' '.$shippingAddress->getLastName();
-        
+
         $to = [
           'name' => $name,
           'attn' => $attn,
@@ -189,6 +191,7 @@ class Index extends \Magento\Backend\App\Action
           'items' => $packageItems
         ];
         if($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes())){
+
             $packages['items'] = $this->getPayloadItems();
         }
         return $packages;
@@ -197,7 +200,7 @@ class Index extends \Magento\Backend\App\Action
     protected function getUpdatePayload($flagship,$shipmentId){
         $store = $this->getStore();
         $shipment = $flagship->getShipmentByIdRequest($shipmentId)->execute();
-        
+
         $from = (array)$shipment->shipment->from;
         unset($from['phone_ext']);
         $to = $this->getReceiver($store);
@@ -205,7 +208,7 @@ class Index extends \Magento\Backend\App\Action
         $packages = (array) $shipment->shipment->packages;
 
         $items = $packages["items"];
-        
+
         foreach ($items as $item) {
             unset($item->pin);
             $item->length = intval($item->length);
@@ -228,7 +231,7 @@ class Index extends \Magento\Backend\App\Action
 
 
     protected function getSender($source,$store){
-        
+
 
         $country = !is_null($source) && !is_null($source->getCountryId()) ? $source->getCountryId() : $store->getConfig('general/store_information/country_id') ;
 
@@ -349,13 +352,14 @@ class Index extends \Magento\Backend\App\Action
         return $stateCode;
     }
 
-    protected function getPackingItems() : array {
-        return $this->displayPackings->getItems();
-    }
+    // protected function getPackingItems() : array {
+    //     return $this->displayPackings->getItems();
+    // }
 
-    protected function getPackingBoxes() : ?array {
+    protected function getPackingBoxes( ) : ?array {
 
         $packings = $this->displayPackings->getPacking();
+
         $boxes = [];
         if(is_null($packings)){
             return NULL;
@@ -371,22 +375,22 @@ class Index extends \Magento\Backend\App\Action
         return $this->displayPackings->getBoxes();
     }
 
-    protected function getBoxWeight(array $box) : array {
+    protected function getBoxWeight(array $box ) : array {
 
         $allBoxes = $this->getBoxes();
 
         $boxDimensions = [];
         foreach ($allBoxes as $allBox) {
-            $boxDimensions = count($this->checkBoxModel($box,$allBox)) > 0 ? $this->checkBoxModel($box,$allBox) : $boxDimensions;
+            $boxDimensions = count($this->checkBoxModel($box,$allBox )) > 0 ? $this->checkBoxModel($box,$allBox ) : $boxDimensions;
         }
         return $boxDimensions;
     }
 
-    protected function checkBoxModel(array $box,array $allBox) : array {
+    protected function checkBoxModel(array $box,array $allBox ) : array {
 
         $boxDimensions = [];
         if($box["box_model"] == $allBox["box_model"]){
-            $boxDimensions["weight"] = $this->getBoxTotalWeight($box,$allBox);
+            $boxDimensions["weight"] = $this->getBoxTotalWeight($box,$allBox );
             $boxDimensions["length"] = $allBox["length"];
             $boxDimensions["width"] = $allBox["width"];
             $boxDimensions["height"] = $allBox["height"];
@@ -394,16 +398,18 @@ class Index extends \Magento\Backend\App\Action
         return $boxDimensions;
     }
 
-    protected function getBoxTotalWeight(array $box,array $allBox) : float {
+    protected function getBoxTotalWeight(array $box,array $allBox ) : float {
 
         foreach($box["items"] as $item){
-            $weight = $allBox["weight"]+$this->getItemWeight($item);
+            $weight = $allBox["weight"]+$this->getItemWeight($item );
         }
         return $weight;
     }
 
-    protected function getItemWeight(string $product) : float {
-        $items = $this->getItems();
+    protected function getItemWeight(string $product ) : float {
+
+
+        $items = $this->getItems( );
         $weight = 0.0;
         foreach ($items as $item) {
             $weight = $item["description"] === $product ? $item["weight"] : $weight;
@@ -411,12 +417,14 @@ class Index extends \Magento\Backend\App\Action
         return $weight;
     }
 
-    protected function getItems() : array {
-        return $this->displayPackings->getItems();
+    protected function getItems( ) : array {
+
+        return $this->displayPackings->getItemsForPrepareShipment();
     }
 
-    protected function getPayloadItems() : array {
-        $items = $this->getPackingBoxes();
+    protected function getPayloadItems( ) : array {
+
+        $items = $this->getPackingBoxes( );
         $payloadItems = [];
         foreach ($items as $item) {
             unset($item["items"]);
@@ -429,7 +437,7 @@ class Index extends \Magento\Backend\App\Action
         return $this->getOrder()->getSubtotal() > 100 ? $this->getOrder()->getSubtotal() : 0.00;
     }
 
-    protected function createShipment(int $flagship_shipment_id,$orderItem) : int {
+    public function createShipment(int $flagship_shipment_id,$orderItem,$confirmed = 0)  {
 
         $order = $this->getOrder();
 
@@ -450,7 +458,14 @@ class Index extends \Magento\Backend\App\Action
         $shipmentExtension->setSourceCode($sourceCode);
         $shipment->setExtensionAttributes($shipmentExtension);
 
-        try {            
+        if($confirmed == 0){
+            $this->setTrackingDetails($flagship_shipment_id,$shipment);
+        }
+        return $shipment;
+    }
+
+    protected function setTrackingDetails($flagship_shipment_id,$shipment){
+        try {
             $shipment->addTrack($this->addShipmentTracking($flagship_shipment_id));
             $shipment->setData('flagship_shipment_id',$flagship_shipment_id);
             $shipment->addComment('FlagShip Shipment Unconfirmed')->save();
