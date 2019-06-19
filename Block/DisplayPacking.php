@@ -10,11 +10,25 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     protected $resource;
     protected $flagship;
 
-    public function __construct(\Magento\Framework\View\Element\Template\Context $context, \Magento\Framework\App\ResourceConnection $resource, \Magento\Sales\Model\OrderRepository $orderRepository, \Flagship\Shipping\Block\Flagship $flagship){
+    public function __construct(
+        \Magento\Framework\View\Element\Template\Context $context,
+        \Magento\Framework\App\ResourceConnection $resource,
+        \Magento\Sales\Model\OrderRepository $orderRepository,
+        \Flagship\Shipping\Block\Flagship $flagship,
+        \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
+        \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
+        \Magento\Inventory\Model\SourceRepository $sourceRepository,
+        \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository
+    ){
         parent::__construct($context);
         $this->resource = $resource;
         $this->orderRepository = $orderRepository;
         $this->flagship = $flagship;
+        $this->shipmentRepository = $shipmentRepository;
+        $this->getSourceCodesBySkus = $getSourceCodesBySkus;
+        $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
+        $this->sourceRepository = $sourceRepository;
+
     }
 
     public function getPacking() : ?array {
@@ -25,16 +39,21 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             if(is_null($this->getBoxes())){
                 return NULL;
             }
-            $packings = $this->getPackingsFromFlagship($this->getPayload());
+            $order = $this->getOrder();
 
-            $packingDetails = [];
-             foreach ($packings as $packing) {
-                $packingDetails[] = [
-                    "box_model" => $packing->getBoxModel(),
-                    "items" => $packing->getItems()
-                ];
+            $this->packingDetails = [];
+
+            $orderItems = $this->getSourceCodesForOrderItems();
+
+            foreach ($orderItems as $orderItem) {
+                $sourceCode = $orderItem['source']->getSourceCode();
+                $items = $orderItem['items'];
+                $packings = $this->getPackingsFromFlagship($this->getPayload($items));
+
+                $this->getPackingDetailsArray($packings,$sourceCode);
             }
-            return $packingDetails;
+
+            return $this->packingDetails;
 
         } catch( \Exception $e){
             $packingDetails = [
@@ -62,15 +81,39 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         }
     }
 
-    public function getItems() : array {
-        $order = $this->getOrder();
-        $orderItems = $order->getAllVisibleItems();
+    public function getSourceCodesForOrderItems() : array {
+        $items = $this->getOrder()->getAllItems();
+        $skus = null;
+        $orderItems = [];
+        foreach ($items as $item) {
+            $skus = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
+            $sourceCode = $this->getSourceCodesBySkus->execute([$skus])[0];
+            $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
+            $orderItems[$sourceCode]['items'][] = $item;
+        }
+        return $orderItems;
+    }
+
+    public function getItemsForPrepareShipment() : array {
+
+
+        $orderItems = $this->getSourceCodesForOrderItems();
 
         $this->items = [];
-        foreach ($orderItems as $item) {
-            $this->forComplexItem($item);
+
+        foreach ($orderItems as $orderItem) {
+            $this->getOrderItemsForSource($orderItem);
         }
 
+        return $this->items;
+    }
+
+    public function getItems($items) : array {
+
+        $this->items = [];
+        foreach ($items as $item) {
+            $this->forComplexItem($item);
+        }
         return $this->items;
     }
 
@@ -78,7 +121,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return $this->flagship->getSettings()["packings"];
     }
 
-    public function getPayload() : ?array {
+    public function getPayload($items) : ?array {
 
         if(is_null($this->getBoxes())){
             $this->flagship->logError("Packing Boxes not set");
@@ -86,7 +129,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         }
 
         $payload = [
-            "items" => $this->getItems(),
+            "items" => $this->getItems($items),
             "boxes" => $this->getBoxes(),
             "units" => $this->getUnits()
         ];
@@ -99,14 +142,13 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             return $packings["error"];
         }
         $packingDetails='';
-        $packingItemDescription = $packings[0]["items"][0];
 
         foreach ($packings as $packing) {
 
             $itemsCount = array_count_values($packing["items"]);
-
             $packingContent[] = [
-                $packing["box_model"] => $this->getPackingList($itemsCount)
+                'source_code' => $packing["source_code"],
+                'detail' => [ $packing["box_model"] => $this->getPackingList($itemsCount) ]
             ];
         }
         return $packingContent;
@@ -124,7 +166,6 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             $packingRequest = $flagship->packingRequest($payload);
             $packings = $packingRequest->execute();
             $this->flagship->logInfo("Retrieved packings from FlagShip. Response Code : ". $packingRequest->getResponseCode());
-
             return $packings;
 
         } catch( PackingException $e){
@@ -132,6 +173,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         }
 
     }
+
     /*
      *@params \Magento\Sales\Model\Order\Item or \Magento\Quote\Model\Quote\Item
      */
@@ -151,7 +193,14 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             ];
     }
 
-    protected function forComplexItem($item){
+    protected function getOrderItemsForSource($orderItem){
+        foreach ($orderItem['items'] as $value) {
+            $this->forComplexItem($value);
+        }
+        return 0;
+    }
+
+    protected function forComplexItem($item) : array {
         if($item->getProductType() == 'bundle'){
             $children = $item->getChildrenItems();
             foreach ($children as $child) {
@@ -162,6 +211,17 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->items = $this->getItemsforPayload($item);
         return $this->items;
 
+    }
+
+    protected function getPackingDetailsArray($packings,$sourceCode) : int {
+        foreach ($packings as $packing) {
+            $this->packingDetails[$sourceCode] = [
+                "source_code" => $sourceCode,
+                "box_model" => $packing->getBoxModel(),
+                "items" => $packing->getItems()
+            ];
+        }
+        return 0;
     }
 
     protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item) : ?array {
