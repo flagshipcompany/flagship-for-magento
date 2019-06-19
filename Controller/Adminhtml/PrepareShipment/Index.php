@@ -33,6 +33,7 @@ class Index extends \Magento\Backend\App\Action
         \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
         \Magento\Inventory\Model\SourceRepository $sourceRepository,
         \Flagship\Shipping\Block\DisplayPacking $displayPackings,
+        \Magento\Sales\Api\Data\ShipmentExtensionFactory $shipmentExtensionFactory,
         \Flagship\Shipping\Block\Flagship $flagship
     )
     {
@@ -49,6 +50,7 @@ class Index extends \Magento\Backend\App\Action
         $this->getSalableQuantityDataBySku = $getSalableQuantityDataBySku;
         $this->getSourceCodesBySkus = $getSourceCodesBySkus;
         $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
+        $this->shipmentExtensionFactory = $shipmentExtensionFactory;
         $this->sourceRepository = $sourceRepository;
         parent::__construct($context);
     }
@@ -89,7 +91,7 @@ class Index extends \Magento\Backend\App\Action
         return $order;
     }
 
-    public function getSourceCodesForOrderItems(){
+    public function getSourceCodesForOrderItems() : array {
         $items = $this->getOrder()->getAllItems();
         $skus = null;
         $orderItems = [];
@@ -109,7 +111,7 @@ class Index extends \Magento\Backend\App\Action
         $from = $this->getSender($source,$store);
         $to = $this->getReceiver($store);
 
-        $packages = $this->getPackages($orderItem['items']);
+        $packages = $this->getPackages($orderItem);
         $options = $this->getOptions($store);
 
         $payment = $this->getPayment();
@@ -125,14 +127,14 @@ class Index extends \Magento\Backend\App\Action
         return $payload;
     }
 
-    protected function getPayment(){
+    protected function getPayment() : array {
         $payment = [
           'payer' => 'F'
         ];
         return $payment;
     }
 
-    protected function getOptions($store){
+    protected function getOptions($store) : array {
         $options = [
           'signature_required' => false,
           'reference' => 'Magento Order# '.$this->getOrder()->getIncrementId(),
@@ -149,7 +151,7 @@ class Index extends \Magento\Backend\App\Action
         return $options;
     }
 
-    protected function getReceiver($store){
+    protected function getReceiver($store) : array {
         $shippingAddress = $this->getShippingAddress();
         $suite = isset($shippingAddress->getStreet()[1]) ? $shippingAddress->getStreet()[1] : NULL ;
         $name = is_null($shippingAddress->getCompany()) ? $shippingAddress->getFirstName() : $shippingAddress->getCompany();
@@ -174,7 +176,8 @@ class Index extends \Magento\Backend\App\Action
         return $to;
     }
 
-    protected function getPackages($items){
+    protected function getPackages($orderItem) : array {
+        $items = $orderItem['items'];
         $packageItems = [];
         foreach ($items as $item) {
             $packageItems[] = [
@@ -190,14 +193,14 @@ class Index extends \Magento\Backend\App\Action
           'type' => 'package',
           'items' => $packageItems
         ];
-        if($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes())){
+        if($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes($orderItem['source']->getSourceCode()))){
 
-            $packages['items'] = $this->getPayloadItems();
+            $packages['items'] = $this->getPayloadItems($orderItem['source']->getSourceCode());
         }
         return $packages;
     }
 
-    protected function getUpdatePayload($flagship,$shipmentId){
+    protected function getUpdatePayload($flagship,$shipmentId) : array {
         $store = $this->getStore();
         $shipment = $flagship->getShipmentByIdRequest($shipmentId)->execute();
 
@@ -230,7 +233,7 @@ class Index extends \Magento\Backend\App\Action
     }
 
 
-    protected function getSender($source,$store){
+    protected function getSender($source,$store) : array {
 
 
         $country = !is_null($source) && !is_null($source->getCountryId()) ? $source->getCountryId() : $store->getConfig('general/store_information/country_id') ;
@@ -352,11 +355,7 @@ class Index extends \Magento\Backend\App\Action
         return $stateCode;
     }
 
-    // protected function getPackingItems() : array {
-    //     return $this->displayPackings->getItems();
-    // }
-
-    protected function getPackingBoxes( ) : ?array {
+    protected function getPackingBoxes( $sourceCode ) : ?array {
 
         $packings = $this->displayPackings->getPacking();
 
@@ -364,10 +363,11 @@ class Index extends \Magento\Backend\App\Action
         if(is_null($packings)){
             return NULL;
         }
-        foreach($packings as $packing){
-            $packing["dimensions"] = $this->getBoxWeight($packing);
-            $boxes[] = $packing;
-        }
+        $packing = $packings[$sourceCode];
+
+        $packing["dimensions"] = $this->getBoxWeight($packing);
+        $boxes[] = $packing;
+
         return $boxes;
     }
 
@@ -422,9 +422,9 @@ class Index extends \Magento\Backend\App\Action
         return $this->displayPackings->getItemsForPrepareShipment();
     }
 
-    protected function getPayloadItems( ) : array {
+    protected function getPayloadItems( $sourceCode ) : array {
 
-        $items = $this->getPackingBoxes( );
+        $items = $this->getPackingBoxes( $sourceCode );
         $payloadItems = [];
         foreach ($items as $item) {
             unset($item["items"]);
@@ -455,8 +455,12 @@ class Index extends \Magento\Backend\App\Action
         $shipment->getOrder()->setIsInProcess(true);
         $shipmentExtension = $shipment->getExtensionAttributes();
         $sourceCode = $orderItem['source']->getSourceCode();
+        if(empty($shipmentExtension)){
+            $shipmentExtension = $this->shipmentExtensionFactory->create();
+        }
         $shipmentExtension->setSourceCode($sourceCode);
         $shipment->setExtensionAttributes($shipmentExtension);
+        $shipment->setData('flagship_shipment_id',$flagship_shipment_id);
 
         if($confirmed == 0){
             $this->setTrackingDetails($flagship_shipment_id,$shipment);
@@ -467,7 +471,7 @@ class Index extends \Magento\Backend\App\Action
     protected function setTrackingDetails($flagship_shipment_id,$shipment){
         try {
             $shipment->addTrack($this->addShipmentTracking($flagship_shipment_id));
-            $shipment->setData('flagship_shipment_id',$flagship_shipment_id);
+
             $shipment->addComment('FlagShip Shipment Unconfirmed')->save();
             return 0;
         } catch (\Exception $e) {
