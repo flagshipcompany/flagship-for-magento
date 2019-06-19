@@ -6,28 +6,6 @@ class UpdateTrackingDetails{
     public function __construct(
         \Flagship\Shipping\Plugin\HideCreateShippingLabel $tracking,
         \Flagship\Shipping\Plugin\SendToFlagshipButton $sendToFlagshipButton,
-        \Flagship\Shipping\Controller\Adminhtml\PrepareShipment\Index $prepareShipment
-    ){
-        $this->tracking = $tracking;
-        $this->prepareShipment = $prepareShipment;
-        $this->sendToFlagshipButton = $sendToFlagshipButton;
-    }
-
-    public function beforeSetLayout(\Magento\Sales\Block\Adminhtml\Order\View $subject){
-        $this->order = $subject->getOrder();
-        $shipments = $this->order->getShipmentsCollection();
-        $orderSources = $this->prepareShipment->getSourceCodesForOrderItems();
-
-        if( count($shipments) == count($orderSources) ){
-            $subject->updateButton('order_ship','class','disabled');
-        }<?php
-
-namespace Flagship\Shipping\Plugin;
-
-class UpdateTrackingDetails{
-    public function __construct(
-        \Flagship\Shipping\Plugin\HideCreateShippingLabel $tracking,
-        \Flagship\Shipping\Plugin\SendToFlagshipButton $sendToFlagshipButton,
         \Flagship\Shipping\Controller\Adminhtml\PrepareShipment\Index $prepareShipment,
         \Magento\Framework\Module\Manager $moduleManager,
         \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository
