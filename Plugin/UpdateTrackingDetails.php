@@ -60,37 +60,3 @@ class UpdateTrackingDetails{
     }
 
 }
-
-
-        foreach ($shipments as $shipment) {
-            $flagshipId = $shipment->getDataByKey('flagship_shipment_id');
-            $this->updateTrackingDetails($flagshipId,$shipment);
-        }
-        $keys = array_keys($orderSources);
-
-        if(count($orderSources) == 1 && in_array('default', $keys)){
-            return;
-        }
-
-        $this->sendToFlagshipButton->addSendToFlagshipButton($subject);
-
-        return;
-    }
-
-    protected function updateTrackingDetails($flagshipId,$shipment){
-        if(is_null($flagshipId)){
-            return NULL;
-        }
-        $flagshipShipment = $this->tracking->getFlagshipShipment($flagshipId);
-        $this->updateTrackingForConfirmedShipment($flagshipShipment,$shipment);
-    }
-
-    protected function updateTrackingForConfirmedShipment($flagshipShipment,$shipment) : bool {
-        if($this->tracking->isShipmentConfirmed($flagshipShipment,$this->order->getId())){
-            $this->tracking->updateShipmentTrackingData($flagshipShipment,$shipment);
-            return TRUE;
-        }
-        return FALSE;
-    }
-
-}
