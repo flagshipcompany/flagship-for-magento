@@ -8,13 +8,15 @@ class UpdateTrackingDetails{
         \Flagship\Shipping\Plugin\SendToFlagshipButton $sendToFlagshipButton,
         \Flagship\Shipping\Controller\Adminhtml\PrepareShipment\Index $prepareShipment,
         \Magento\Framework\Module\Manager $moduleManager,
-        \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository
+        \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     ){
         $this->tracking = $tracking;
         $this->prepareShipment = $prepareShipment;
         $this->moduleManager = $moduleManager;
         $this->sendToFlagshipButton = $sendToFlagshipButton;
         $this->shipmentRepository = $shipmentRepository;
+        $this->scopeConfig = $scopeConfig;
     }
 
     public function beforeSetLayout(\Magento\Sales\Block\Adminhtml\Order\View $subject){
@@ -37,7 +39,9 @@ class UpdateTrackingDetails{
             $this->updateTrackingDetails($flagshipId,$shipment);
         }
 
-        $this->sendToFlagshipButton->addSendToFlagshipButton($subject);
+        if(!$this->scopeConfig->getValue('carriers/flagship/show_button')){
+            $this->sendToFlagshipButton->addSendToFlagshipButton($subject);
+        }
 
         return;
     }

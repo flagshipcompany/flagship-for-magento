@@ -24,7 +24,7 @@
 
             $packing = '';
             foreach ($packingDetails as $packingDetail) {
-                $packing .= normalizePackingDetail($packingDetail);
+                $packing .= normalizePackingDetail($packingDetail['detail']);
             }
 
             echo $packing;
