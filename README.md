@@ -39,7 +39,7 @@ Under FlagShip Configuration, set the API Token, Packing and Logging preferences
 
 Make sure that Store Address is set under Store > Configuration > General > Store Information
 
-Every source should be assigned an address. You can set is Store > Sources > (Edit the source) > Address Data 
+Every source should be assigned an address. You can set it: Store > Sources > (Edit the source) > Address Data 
 
 Enable the shipping methods, Store > Configuration > Sales > Shipping Methods > FlagShip Shipping
 
