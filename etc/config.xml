@@ -6,7 +6,7 @@
                 <active>0</active>
                 <model>Flagship\Shipping\Model\Carrier\FlagshipQuote</model>
                 <name>FlagShip Shipping</name>
-                <title>FlagShip</title>
+                <test_env>0</test_env>
                 <insuranceflag>1</insuranceflag>
                 <force_residential>1</force_residential>
                 <markup>10</markup>

@@ -4,16 +4,11 @@
         <section id="carriers" translate="label" type="text" sortOrder="320" showInDefault="1" showInWebsite="1" showInStore="1">
             <group id="flagship" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>FlagShip Shipping</label>
-                <field id="active" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="active" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enabled</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="title" translate="label" type="text" sortOrder="2" showInDefault="0" showInWebsite="0" showInStore="0">
-                    <label>Title</label>
-                </field>
-                <field id="name" translate="label" type="text" sortOrder="3" showInDefault="0" showInWebsite="0" showInStore="0">
-                    <label>Method Name</label>
-                </field>
+                
                 <field id="delivery_date" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Show Estimated Delivery Date</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>

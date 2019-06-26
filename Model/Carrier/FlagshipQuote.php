@@ -16,7 +16,6 @@ class FlagshipQuote
     const SHIPPING_CODE = 'flagship';
 
     protected $_code = self::SHIPPING_CODE;
-    protected $objectManager;
     protected $cart;
     protected $flagshipLogger;
     protected $flagshipLoggingEnabled;
@@ -39,7 +38,6 @@ class FlagshipQuote
         \Magento\Directory\Helper\Data $directoryData,
         \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry,
         array $data = [],
-        \Magento\Framework\ObjectManagerInterface $objectManager,
         \Magento\Framework\DataObject $request,
         \Magento\Checkout\Model\Cart $cart,
         \Magento\Framework\App\ResourceConnection $resource,
@@ -54,7 +52,6 @@ class FlagshipQuote
         \Magento\Inventory\Model\SourceRepository $sourceRepository,
         \Magento\Sales\Model\ResourceModel\Order\Shipment\CollectionFactory $shipmentCollection
     ) {
-        $this->objectManager = $objectManager;
         $this->request = $request;
         $this->cart = $cart;
         $this->resource = $resource;
@@ -110,16 +107,16 @@ class FlagshipQuote
         $status->setCarrier($this->getCarrierCode());
 
         if(stristr($tracking, 'Unconfirmed') !== false ){
-        
+
             $shipmentId = substr($tracking,strpos($tracking,'-')+1);
             $orderId = $this->getOrderId($shipmentId);
             $url = $this->url->getUrl('shipping/convertShipment',['shipmentId'=> $shipmentId, 'order_id' => $orderId]);
 
             $status->setCarrierTitle('Your FlagShip shipment is still Unconfirmed');
         }
-        
+
         if(stristr($tracking, 'Unconfirmed') === false ){ //shipment confirmed
-            
+
             $shipment = $this->getShipmentFromFlagship($tracking);
 
             $status->setCarrierTitle($shipment->getCourierDescription());
@@ -197,17 +194,17 @@ class FlagshipQuote
     {
 
         $sourceCodes = $this->getSourcesForOrder();
-        
+
         $rates = [];
 
         foreach ($sourceCodes as $sourceCode) {
             $source = $this->sourceRepository->get($sourceCode);
-            $payload = $this->getPayload($request,$source);                
-            
+            $payload = $this->getPayload($request,$source);
+
             $quotes = $this->getQuotes($payload);
 
             foreach ($quotes as $quote) {
-                
+
                 $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['total'][] = $quote->getTotal();
 
                 $courierName = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
@@ -221,7 +218,7 @@ class FlagshipQuote
                     'method_title' => $methodTitle,
                     'estimated_delivery_date' => $quote->rate->service->estimated_delivery_date
                 ];
-              
+
             }
         }
 
@@ -231,7 +228,7 @@ class FlagshipQuote
 
         try{
             $this->flagship->logInfo('Retrieved quotes from FlagShip');
-            
+
             foreach ($rates as $rate) {
                 $result->append($this->prepareShippingMethods($rate));
             }
@@ -327,8 +324,8 @@ class FlagshipQuote
         $insuranceFlag  = $this->getConfigData('insuranceflag');
 
         $residentialFlag = $this->getConfigData('force_residential');
-        
-        
+
+
         $from_city = is_null($source->getCity()) ? $this->_scopeConfig->getValue('general/store_information/city',\Magento\Store\Model\ScopeInterface::SCOPE_STORE) : $source->getCity() ;
         $from_country = is_null($source->getCountryId()) ? $this->_scopeConfig->getValue('general/store_information/country_id',\Magento\Store\Model\ScopeInterface::SCOPE_STORE) : $source->getCountryId();
         $from_state =  is_null($source->getRegionId()) ? $this->getState($this->_scopeConfig->getValue('general/store_information/region_id',\Magento\Store\Model\ScopeInterface::SCOPE_STORE)) : $this->getState($source->getRegionId());
@@ -392,7 +389,7 @@ class FlagshipQuote
     }
 
     protected function getState($regionId) : string {
-        
+
         $shipperRegion = $this->_regionFactory->create()->load($regionId);
         $shipperRegionCode =$shipperRegion->getCode();
         return $shipperRegionCode;

@@ -9,14 +9,12 @@ class SendToFlagshipButton{
         return;
     }
 
-    public function addSendToFlagshipButton($subject,$showButton = 1){
+    public function addSendToFlagshipButton($subject){
         $order = NULL;
-        if(!is_null($subject->getShipment())){
-            $order = $subject->getShipment()->getOrder();
-        }
-        $order = $subject->getOrder();
 
-        if(!$order->hasShipments() && $showButton){
+        $order = !is_null($subject->getShipment()) ? $subject->getShipment()->getOrder() : $subject->getOrder();
+        
+        if(!$order->hasShipments()){
             $orderId = $order->getId();
             return $subject->addButton(
                 'send_to_flagship',

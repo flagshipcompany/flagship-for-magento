@@ -24,6 +24,10 @@ class UpdateTrackingDetails{
         $shipments = $this->order->getShipmentsCollection();
         $orderSources = $this->prepareShipment->getSourceCodesForOrderItems();
 
+        if(!$this->scopeConfig->getValue('carriers/flagship/show_button')){
+            $this->sendToFlagshipButton->addSendToFlagshipButton($subject);
+        }
+
         if( count($shipments) == count($orderSources) ){
             $subject->updateButton('order_ship','class','disabled');
         }
@@ -38,11 +42,6 @@ class UpdateTrackingDetails{
             $flagshipId = $shipment->getDataByKey('flagship_shipment_id');
             $this->updateTrackingDetails($flagshipId,$shipment);
         }
-
-        if(!$this->scopeConfig->getValue('carriers/flagship/show_button')){
-            $this->sendToFlagshipButton->addSendToFlagshipButton($subject);
-        }
-
         return;
     }
 

@@ -20,12 +20,18 @@ class Config extends \Magento\Framework\View\Element\Template{
         $token = isset($settings["token"]) && !empty($settings["token"]) ? 'Token is set. ' : 'Token is not set. ';
         $log = isset($settings["log"]) && !empty($settings["log"]) ? 'Logging Enabled. ' : 'Logging Disabled. ';
 
-        $msg = count($settings) === 0 ? 'FlagShip is not configured' : $token.$packings.$log;
+        $env = isset($settings["test_env"]) && !empty($settings["test_env"]) ? 'Test enviroment enabled' : 'Test enviroment disabled. ';
+
+        $msg = count($settings) === 0 ? 'FlagShip is not configured' : $token.$packings.$log.$env;
         return $msg;
     }
 
     public function isTokenSet() : bool {
         return  array_key_exists("token",$this->flagship->getSettings()) ;
+    }
+
+    public function getSettings(){
+        return $this->flagship->getSettings();
     }
 
 }

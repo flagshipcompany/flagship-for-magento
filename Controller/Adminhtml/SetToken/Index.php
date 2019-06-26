@@ -7,7 +7,6 @@ use \Flagship\Shipping\Exceptions\ValidateTokenException;
 class Index extends \Magento\Backend\App\Action{
 
     protected $resultPageFactory;
-    protected $objectManager;
     protected $_logger;
     protected $loggingEnabled;
     protected $flagship;
@@ -16,31 +15,37 @@ class Index extends \Magento\Backend\App\Action{
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
         \Magento\Framework\View\Result\PageFactory $resultPageFactory,
-        \Flagship\Shipping\Logger\Logger $logger
+        \Flagship\Shipping\Logger\Logger $logger,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
+        \Flagship\Shipping\Model\ConfigFactory $configFactory,
+        \Flagship\Shipping\Model\Config $config,
+        \Flagship\Shipping\Block\Flagship $flagship
     ) {
-
          parent::__construct($context);
          $this->resultPageFactory = $resultPageFactory;
-         $this->objectManager = $context->getObjectManager();
-         $this->flagship = $this->objectManager->get("Flagship\Shipping\Block\Flagship");
+         $this->flagship = $flagship;
          $this->_logger = $logger;
          $this->loggingEnabled = $this->flagship->getSettings()["log"];
+         $this->configFactory = $configFactory;
+         $this->config = $config;
     }
 
     public function execute()
     {
-
        $token = $this->getRequest()->getParam('api_token');
+       $testEnv = $this->getRequest()->getParam('test_env');
 
         if(!isset($token)){
             return $this->_redirect($this->_redirect->getRefererUrl());
         }
 
-        if($this->isSetTokenSame($token)){
+        $url = $testEnv ? "https://test-api.smartship.io" : "http://127.0.0.1:3002" ;
+
+        if($this->isSetTokenSame($token,$url)){
             $this->flagship->logInfo('Same token is set');
             return $this->_redirect($this->_redirect->getRefererUrl($this->messageManager->addNoticeMessage( __('Same API Token is set'))));
         }
-        if($this->setToken($token)){
+        if($this->setToken($token,$url)){
             $this->flagship->logInfo('Token saved');
             return $this->_redirect($this->_redirect->getRefererUrl($this->messageManager->addSuccessMessage( __('Success! API Token saved'))));
         }
@@ -59,20 +64,29 @@ class Index extends \Magento\Backend\App\Action{
         return array_key_exists("token", $this->flagship->getSettings());
     }
 
-    protected function isSetTokenSame(string $token) : bool {
+    protected function isSetTokenSame(string $token,?string $url) : bool {
 
-        if($this->isTokenValid($token) && strcmp($this->getSetToken(),$token) === 0){
+        if($this->isTokenValid($token,$url) && strcmp($this->getSetToken(),$token) === 0){
             return TRUE;
         }
         return FALSE;
     }
 
-    protected function setToken(string $token) : bool {
+    protected function setToken(string $token, string $url) : bool {
 
         $this->flagship->logInfo('Validating Token');
 
-        if($this->isTokenValid($token)){
-            $apiToken = $this->objectManager->create('Flagship\Shipping\Model\Config');
+        if($this->isTokenValid($token,$url) && $this->isTokenSet()){
+            $collection = $this->config->getCollection()->addFieldToFilter('name',['eq' => 'token']);
+            $recordId = $collection->getFirstItem()->getId();
+            $record = $this->config->load($recordId);
+            $record->setValue($token);
+            $record->save();
+            return true;
+        }
+
+        if($this->isTokenValid($token,$url)){
+            $apiToken = $this->configFactory->create();
             $apiToken->setName('token');
             $apiToken->setValue($token);
             $this->flagship->logInfo('Saving token to database');
@@ -91,13 +105,13 @@ class Index extends \Magento\Backend\App\Action{
         }
     }
 
-    protected function isTokenValid(?string $token) : bool {
+    protected function isTokenValid(?string $token, ?string $url) : bool {
 
         if(is_null($token)){
             return false;
         }
 
-        $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
+        $flagship = new Flagship($token,$url,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         $validateTokenRequest = $flagship->validateTokenRequest($token);
 

@@ -8,7 +8,6 @@ use \Flagship\Shipping\Block\DisplayPacking;
 class Index extends \Magento\Backend\App\Action
   {
 
-    protected $objectManager;
     protected $orderId;
     protected $orderRepository;
     protected $scopeConfig;
@@ -36,8 +35,7 @@ class Index extends \Magento\Backend\App\Action
         \Magento\Sales\Api\Data\ShipmentExtensionFactory $shipmentExtensionFactory,
         \Flagship\Shipping\Block\Flagship $flagship
     )
-    {
-        $this->objectManager = $context->getObjectManager();
+    {    
         $this->orderRepository = $orderRepository;
         $this->scopeConfig = $scopeConfig;
         $this->regionFactory = $regionFactory;

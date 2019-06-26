@@ -8,14 +8,19 @@ class Index extends \Magento\Backend\App\Action{
     protected $loggingEnabled;
     protected $flagship;
 
-    public function __construct(\Magento\Backend\App\Action\Context $context,\Magento\Framework\View\Result\PageFactory $resultPageFactory, \Flagship\Shipping\Logger\Logger $logger) {
+    public function __construct(
+        \Magento\Backend\App\Action\Context $context,
+        \Magento\Framework\View\Result\PageFactory $resultPageFactory,
+        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Logger\Logger $logger,
+        \Flagship\Shipping\Model\AddBoxesFactory $addBoxesFactory
+    ) {
         parent::__construct($context);
         $this->resultPageFactory = $resultPageFactory;
-        $this->objectManager = $context->getObjectManager();
-        $this->flagship = $this->objectManager->get("Flagship\Shipping\Block\Flagship");
+        $this->flagship = $flagship;
+        $this->addBoxesFactory = $addBoxesFactory;
         $this->_logger = $logger;
         $this->loggingEnabled = $this->flagship->getSettings()["log"];
-
     }
 
     public function execute(){
@@ -27,18 +32,15 @@ class Index extends \Magento\Backend\App\Action{
         $weight = $this->getRequest()->getParam('weight');
         $maxWeight = $this->getRequest()->getParam('maxWeight');
 
-        if(isset($model)){
-            if($this->createBox($model,$length,$width,$height,$weight,$maxWeight)){
-
-                return $this->_redirect($this->getUrl('shipping/listboxes/Index'),$this->messageManager->addSuccessMessage("Success!Box added"));
-            }
+        if(isset($model) && $this->createBox($model,$length,$width,$height,$weight,$maxWeight) ){
+            return $this->_redirect($this->getUrl('shipping/listboxes/Index'),$this->messageManager->addSuccessMessage("Success!Box added"));
         }
         return $this->resultPageFactory->create();
     }
 
     protected function createBox(string $model,string $length,string $width,string $height,string $weight,string $maxWeight) : bool {
 
-        $box = $this->objectManager->create('Flagship\Shipping\Model\AddBoxes');
+        $box = $this->addBoxesFactory->create();
 
         $box->setBoxModel($model);
         $box->setLength($length);

@@ -8,10 +8,10 @@ use \Flagship\Shipping\GetShipmentsListException;
 
 class HideCreateShippingLabel{
 
-    public function __construct(\Magento\Backend\App\Action\Context $context, \Flagship\Shipping\Logger\Logger $logger){
+    public function __construct(\Flagship\Shipping\Block\Flagship $flagship, \Flagship\Shipping\Logger\Logger $logger){
 
-        $this->objectManager = $context->getObjectManager();
-        $this->flagship = $this->objectManager->get("Flagship\Shipping\Block\Flagship");
+        $this->logger = $logger;
+        $this->flagship = $flagship;
     }
 
     public function afterSetLayout() : int {

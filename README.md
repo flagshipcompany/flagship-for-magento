@@ -10,7 +10,7 @@ Magento2 module for FlagShip.
 
 ```
 composer require flagshipcompany/flagship-for-magento:^1.0
-composer update 
+composer update
 bin/magento module:enable Flagship_Shipping
 bin/magento setup:upgrade
 ```
@@ -38,6 +38,7 @@ Login to Magento Admin.
 Under FlagShip Configuration, set the API Token, Packing and Logging preferences.
 
 Make sure that Store Address is set under Store > Configuration > General > Store Information
+Every source should be assigned an address. You can set is Store > Sources > (Edit the source) > Address Data 
 
 Enable the shipping methods, Store > Configuration > Sales > Shipping Methods > FlagShip Shipping
 
@@ -46,7 +47,7 @@ Enable the shipping methods, Store > Configuration > Sales > Shipping Methods > 
 
 ## Shipping
 
-When a customer places an order, the selected shipping methods are shown and the customer can choose a shipping method. 
+When a customer places an order, the selected shipping methods are shown and the customer can choose a shipping method.
 
 To make a FlagShip shipment, Sales > Orders > Order# 123 > Ship > Send To FlagShip
 

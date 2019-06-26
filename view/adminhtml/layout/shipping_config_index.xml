@@ -6,6 +6,9 @@
         </title>
     </head>
     <body>
+        <!-- <referenceContainer name="content">
+            <uiComponent name="shipping_config_form"/>
+        </referenceContainer> -->
         <referenceContainer name="content">
             <block class="Flagship\Shipping\Block\Config" template="Flagship_Shipping::config.phtml" name="config"/>
         </referenceContainer>

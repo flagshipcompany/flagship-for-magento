@@ -6,19 +6,28 @@ class Index extends \Magento\Backend\App\Action{
     protected $_logger;
     protected $loggingEnabled;
 
-    public function __construct(\Magento\Backend\App\Action\Context $context,\Magento\Framework\View\Result\PageFactory $resultPageFactory, \Flagship\Shipping\Logger\Logger $logger) {
+    public function __construct(
+        \Magento\Backend\App\Action\Context $context,
+        \Magento\Framework\View\Result\PageFactory $resultPageFactory,
+        \Flagship\Shipping\Logger\Logger $logger,
+        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Model\ConfigFactory $configFactory,
+        \Flagship\Shipping\Model\Config $config
+    ) {
         parent::__construct($context);
         $this->resultPageFactory = $resultPageFactory;
-        $this->objectManager = $context->getObjectManager();
-        $this->flagship = $this->objectManager->get("Flagship\Shipping\Block\Flagship");      
+        $this->flagship = $flagship;
+        $this->configFactory = $configFactory;
         $this->_logger = $logger;
+        $this->config = $config;
     }
 
     public function execute(){
-        
+
         $token = $this->getRequest()->getParam('api_token');
         $packings = $this->getRequest()->getParam('packings');
         $logging = $this->getRequest()->getParam('logging');
+        $testEnv = $this->getRequest()->getParam('test_env');
 
         if($this->isLoggingEnabled()){
             $this->loggingEnabled = true;
@@ -26,15 +35,12 @@ class Index extends \Magento\Backend\App\Action{
 
         if(isset($token) || isset($packings) || isset($logging)){
 
-            $this->_redirect($this->getUrl('shipping/settoken',['api_token' => $token]));
-            
-            $config = $this->objectManager->create('Flagship\Shipping\Model\Config');
-        
-            $this->setPackings($config,$packings);
-        
-            $this->setLogging($config,$logging);
+            $this->_redirect($this->getUrl('shipping/settoken',['api_token' => $token,'test_env' => $testEnv]));
+            $this->setPackings($packings);
+            $this->setLogging($logging);
+            $this->setEnv($testEnv);
         }
-        
+
         return  $resultPage = $this->resultPageFactory->create();
     }
 
@@ -43,61 +49,55 @@ class Index extends \Magento\Backend\App\Action{
         return $logging;
     }
 
-    protected function setPackings(\Flagship\Shipping\Model\Config $config,string $packings) : bool {
-
-        if(!$this->ifSettingExists('packings')){
-            $this->saveConfig($config,'packings',$packings);
+    protected function setEnv($testEnv){
+        if($this->setConfig('test_env',$testEnv)){
             return TRUE;
         }
-
-        $resource = $this->objectManager->get('Magento\Framework\App\ResourceConnection');
-        $connection = $resource->getConnection();
-        try{
-            $connection->update("flagship_settings",
-                ["value"=>$packings],
-                ["name = ?" => 'packings']
-            );
-            $this->flagship->logInfo('Updated packings setting');
-            return TRUE;
-        } catch (\Exception $e){
-            $this->flagship->logError($e->getMessage());
-            $this->messageManager->addErrorMessage(__($e->getMessage()));
-        }
-
+        return $this->updateConfig('test_env',$testEnv);
     }
 
-     protected function setLogging(\Flagship\Shipping\Model\Config $config,string $log) : bool {
-
-        if(!$this->ifSettingExists('log')){
-            $this->saveConfig($config,'log',$log);
+    protected function setConfig(string $name, string $value){
+        if(!$this->ifSettingExists($name)){
+            $this->saveConfig($name,$value);
             return TRUE;
         }
+        return FALSE;
+    }
 
-        $resource = $this->objectManager->get('Magento\Framework\App\ResourceConnection');
-        $connection = $resource->getConnection();
-        try{
-            $connection->update("flagship_settings",
-                    ["value"=>$log],
-                    ["name = ?" => 'log']
-            );
-            
-            $this->flagship->logInfo('Updated logging setting');
+    protected function updateConfig(string $name, string $value){
+        $collection = $this->config->getCollection()->addFieldToFilter('name',['eq' => $name]);
+        $recordId = $collection->getFirstItem()->getId();
+        $record = $this->config->load($recordId);
+        $record->setValue($value);
+        $record->save();
+        return TRUE;
+    }
+
+    protected function setPackings(string $packings) : bool {
+        if($this->setConfig('packings',$packings)){
             return TRUE;
-        } catch(\Exception $e){
-            $this->flagship->logError($e->getMessage());
-            $this->messageManager->addErrorMessage(__($e->getMessage()));
         }
+        return $this->updateConfig('packings',$packings);
+    }
+
+    protected function setLogging(string $log) : bool {
+
+         if($this->setConfig('log',$log)){
+             return TRUE;
+         }
+          return $this->updateConfig('log',$log);
     }
 
     protected function ifSettingExists(string $property) : bool {
-        
-        $settings = $this->flagship->getSettings(); 
+
+        $settings = $this->flagship->getSettings();
         return array_key_exists($property, $settings);
     }
 
-    protected function saveConfig(\Flagship\Shipping\Model\Config $config,string $name,string $value) : bool {
-        
+    protected function saveConfig(string $name,string $value) : bool {
+
         try{
+                $config = $this->configFactory->create();
                 $config->setName($name);
                 $config->setValue($value);
                 $config->save();

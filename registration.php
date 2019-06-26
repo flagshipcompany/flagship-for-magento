@@ -9,8 +9,5 @@ ComponentRegistrar::register(
 );
 require BP.'/vendor/autoload.php';
 
-//NO Tailing slashes please
-define('SMARTSHIP_WEB_URL','https://smartship-ng.flagshipcompany.com');
-define('SMARTSHIP_API_URL','https://api.smartship.io');
 define('FLAGSHIP_MODULE','Magento');
-define('FLAGSHIP_MODULE_VERSION','1.0.17');
+define('FLAGSHIP_MODULE_VERSION','1.0.18');
