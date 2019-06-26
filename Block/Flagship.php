@@ -58,8 +58,8 @@ class Flagship extends \Magento\Framework\View\Element\Template{
             define('SMARTSHIP_API_URL','https://test-api.smartship.io');
             return 0;
         }
-        define('SMARTSHIP_WEB_URL','http://127.0.0.1:3006');
-        define('SMARTSHIP_API_URL','http://127.0.0.1:3002');
+        define('SMARTSHIP_WEB_URL','https://smartship-ng.flagshipcompany.com');
+        define('SMARTSHIP_API_URL','https://api.smartship.io');
         return 0;
     }
 
