@@ -52,8 +52,8 @@ class Flagship extends \Magento\Framework\View\Element\Template{
         return FALSE;
     }
 
-    private function getEnv(){
-        if($this->getSettings()['test_env']){
+    private function getEnv() :  int {
+        if(isset($this->getSettings()['test_env']) && $this->getSettings()['test_env'] == 1 ){
             define('SMARTSHIP_WEB_URL','https://test-smartshipng.flagshipcompany.com');
             define('SMARTSHIP_API_URL','https://test-api.smartship.io');
             return 0;

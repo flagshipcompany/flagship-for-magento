@@ -33,11 +33,19 @@ class Index extends \Magento\Backend\App\Action{
             $this->loggingEnabled = true;
         }
 
-        if(isset($token) || isset($packings) || isset($logging)){
-
+        if(isset($token)){
             $this->_redirect($this->getUrl('shipping/settoken',['api_token' => $token,'test_env' => $testEnv]));
+        }
+
+        if(isset($packings)){
             $this->setPackings($packings);
+        }
+
+        if(isset($logging)){
             $this->setLogging($logging);
+        }
+
+        if(isset($testEnv)){
             $this->setEnv($testEnv);
         }
 
@@ -65,6 +73,7 @@ class Index extends \Magento\Backend\App\Action{
     }
 
     protected function updateConfig(string $name, string $value){
+        var_dump("thing_to_debug"); var_dump($value);
         $collection = $this->config->getCollection()->addFieldToFilter('name',['eq' => $name]);
         $recordId = $collection->getFirstItem()->getId();
         $record = $this->config->load($recordId);

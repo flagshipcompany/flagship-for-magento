@@ -19,10 +19,19 @@
     <div class="label">
     <label for="env"><span>Enable Test Environment</span></label>
       <select class="select admin__control-select" name="test_env">
-          <?php $text = $block->getSettings()['test_env'] ? 'Yes' : 'No'; ?>
-          <option value="<?= $block->getSettings()['test_env']; ?>" selected="selected"><?= $text ?></option>
-          <?php $text = !$block->getSettings()['test_env'] ? 'Yes' : 'No'; ?>
-          <option value="<?= !$block->getSettings()['test_env']; ?>" ><?= $text ?></option>
+          <?php if(isset($block->getSettings()['test_env'])): ?>
+          <?php $text = $block->getSettings()['test_env'] ? 'Yes' : 'No';
+                $value = $block->getSettings()['test_env'] ? 1 : 0;
+          ?>
+          <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
+          <?php $text = !$block->getSettings()['test_env'] ? 'Yes' : 'No';
+                $value = !$block->getSettings()['test_env'] ? 1 : 0;
+          ?>
+          <option value="<?= $value ?>" ><?= $text ?></option>
+      <?php else: ?>
+          <option value="1" selected="selected">Yes</option>
+          <option value="0">No</option>
+      <?php endif; ?>
       </select>
       </div>
       <br>
@@ -30,11 +39,19 @@
     <div class="label">
     <label for="packing"><span>Enable Packings</span></label>
       <select class="select admin__control-select" name="packings">
-
-          <?php $text = $block->getSettings()['packings'] ? 'Yes' : 'No'; ?>
-          <option value="<?= $block->getSettings()['packings']; ?>" selected="selected"><?= $text ?></option>
-          <?php $text = !$block->getSettings()['packings'] ? 'Yes' : 'No'; ?>
-          <option value="<?= !$block->getSettings()['packings']; ?>" ><?= $text ?></option>
+          <?php if(isset($block->getSettings()['packings'])): ?>
+          <?php $text = $block->getSettings()['packings'] ? 'Yes' : 'No';
+                $value = $block->getSettings()['packings'] ? 1 : 0;
+          ?>
+          <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
+          <?php $text = !$block->getSettings()['packings'] ? 'Yes' : 'No';
+                $value = !$block->getSettings()['packings'] ? 1 : 0;
+          ?>
+          <option value="<?= $value ?>" ><?= $text ?></option>
+      <?php else: ?>
+          <option value="1" selected="selected">Yes</option>
+          <option value="0">No</option>
+      <?php endif; ?>
       </select>
       </div>
       <br>
@@ -42,11 +59,20 @@
     <div class="label">
     <label for="logging"><span>Enable Logging</span></label>
       <select class="select admin__control-select" name="logging">
+          <?php if(isset($block->getSettings()['log'])): ?>
+          <?php $text = $block->getSettings()['log'] ? 'Yes' : 'No';
+                $value = $block->getSettings()['log'] ? 1 : 0;
+          ?>
+          <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
+          <?php $text = !$block->getSettings()['log'] ? 'Yes' : 'No';
+                $value = !$block->getSettings()['log'] ? 1 : 0;
+          ?>
+          <option value="<?= $value ?>" ><?= $text ?></option>
+        <?php else: ?>
+          <option value="1" selected="selected">Yes</option>
+          <option value="0">No</option>
+        <?php endif; ?>
 
-          <?php $text = $block->getSettings()['log'] ? 'Yes' : 'No'; ?>
-          <option value="<?= $block->getSettings()['log']; ?>" selected="selected"><?= $text ?></option>
-          <?php $text = !$block->getSettings()['log'] ? 'Yes' : 'No'; ?>
-          <option value="<?= !$block->getSettings()['log']; ?>" ><?= $text ?></option>
       </select>
       </div>
       <br>
