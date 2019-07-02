@@ -118,7 +118,6 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     }
 
     public function isPackingEnabled() : int {
-        error_log($this->flagship->getSettings()["packings"]);
         return $this->flagship->getSettings()["packings"];
     }
 
