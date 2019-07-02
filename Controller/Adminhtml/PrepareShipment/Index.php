@@ -94,8 +94,8 @@ class Index extends \Magento\Backend\App\Action
         $skus = null;
         $orderItems = [];
         foreach ($items as $item) {
-            $skus = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
-            $sourceCode = $this->getSourceCodesBySkus->execute([$skus])[0];
+            $sku = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
+            $sourceCode = $this->getSourceCodesBySkus->execute([$sku])[0];
             $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
             $orderItems[$sourceCode]['items'][] = $item;
         }
@@ -361,7 +361,12 @@ class Index extends \Magento\Backend\App\Action
         if(is_null($packings)){
             return NULL;
         }
-        $packing = $packings[$sourceCode];
+
+        foreach ($packings as $value) {
+            $packing = $value['source_code'] == $sourceCode ? $value : NULL;
+        }
+
+        $packing = array_filter($packing,function($value){ return $value != NULL; });
 
         $packing["dimensions"] = $this->getBoxWeight($packing);
         $boxes[] = $packing;
@@ -446,6 +451,7 @@ class Index extends \Magento\Backend\App\Action
             $qtyShipped = $item->getProductType() == 'configurable' && $item->getQtyToShip() == 0 ? $item->getSimpleQtyToShip() :$item->getQtyToShip();
             $shipmentItem = $this->convertOrder->itemToShipmentItem($item)->setQty($qtyShipped);
             $shipment->addItem($shipmentItem);
+
         }
 
         $shipment->register();
@@ -453,15 +459,17 @@ class Index extends \Magento\Backend\App\Action
         $shipment->getOrder()->setIsInProcess(true);
         $shipmentExtension = $shipment->getExtensionAttributes();
         $sourceCode = $orderItem['source']->getSourceCode();
+
         if(empty($shipmentExtension)){
             $shipmentExtension = $this->shipmentExtensionFactory->create();
         }
+
         $shipmentExtension->setSourceCode($sourceCode);
         $shipment->setExtensionAttributes($shipmentExtension);
         $shipment->setData('flagship_shipment_id',$flagship_shipment_id);
 
         if($confirmed == 0){
-            $this->setTrackingDetails($flagship_shipment_id,$shipment);
+            $shipment = $this->setTrackingDetails($flagship_shipment_id,$shipment);
         }
         return $shipment;
     }
@@ -469,9 +477,9 @@ class Index extends \Magento\Backend\App\Action
     protected function setTrackingDetails($flagship_shipment_id,$shipment){
         try {
             $shipment->addTrack($this->addShipmentTracking($flagship_shipment_id));
-
-            $shipment->addComment('FlagShip Shipment Unconfirmed')->save();
-            return 0;
+            $shipment->addComment('FlagShip Shipment Unconfirmed');
+            $shipment->save();
+            return $shipment;
         } catch (\Exception $e) {
             $this->flagship->logError($e->getMessage());
             throw new \Magento\Framework\Exception\LocalizedException(__($e->getMessage()));

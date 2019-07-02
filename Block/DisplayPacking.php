@@ -142,10 +142,10 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         if(array_key_exists("error",$packings)){
             return $packings["error"];
         }
-        // $packingDetails='';
-        foreach ($packings as $packing) {
 
+        foreach ($packings as $packing) {
             $itemsCount = array_count_values($packing["items"]);
+
             $packingContent[] = [
                 'source_code' => $packing["source_code"],
                 'detail' => [ $packing["box_model"] => $this->getPackingList($itemsCount) ]
@@ -216,12 +216,13 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
     protected function getPackingDetailsArray($packings,$sourceCode) : int {
         foreach ($packings as $packing) {
-            $this->packingDetails[$sourceCode] = [
+            $this->packingDetails[] = [
                 "source_code" => $sourceCode,
                 "box_model" => $packing->getBoxModel(),
                 "items" => $packing->getItems()
             ];
         }
+
         return 0;
     }
 
