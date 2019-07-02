@@ -35,7 +35,7 @@ class Index extends \Magento\Backend\App\Action
         \Magento\Sales\Api\Data\ShipmentExtensionFactory $shipmentExtensionFactory,
         \Flagship\Shipping\Block\Flagship $flagship
     )
-    {    
+    {
         $this->orderRepository = $orderRepository;
         $this->scopeConfig = $scopeConfig;
         $this->regionFactory = $regionFactory;
@@ -443,7 +443,7 @@ class Index extends \Magento\Backend\App\Action
 
         foreach($orderItem['items'] as $item){
 
-            $qtyShipped = $item->getQtyToShip() == 0 ? 1 : $item->getQtyToShip() ;
+            $qtyShipped = $item->getProductType() == 'configurable' && $item->getQtyToShip() == 0 ? $item->getSimpleQtyToShip() :$item->getQtyToShip();
             $shipmentItem = $this->convertOrder->itemToShipmentItem($item)->setQty($qtyShipped);
             $shipment->addItem($shipmentItem);
         }

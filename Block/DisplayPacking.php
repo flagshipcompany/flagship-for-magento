@@ -89,7 +89,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             $skus = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
             $sourceCode = $this->getSourceCodesBySkus->execute([$skus])[0];
             $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
-            $orderItems[$sourceCode]['items'][] = $item;
+            if($item->getProductType() != 'configurable') $orderItems[$sourceCode]['items'][] = $item;
         }
         return $orderItems;
     }
@@ -142,8 +142,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         if(array_key_exists("error",$packings)){
             return $packings["error"];
         }
-        $packingDetails='';
-
+        // $packingDetails='';
         foreach ($packings as $packing) {
 
             $itemsCount = array_count_values($packing["items"]);
@@ -193,6 +192,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
                 "description" => strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"].' - '.$item->getProductOptions()["simple_name"] : $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
             ];
     }
+
 
     protected function getOrderItemsForSource($orderItem){
         foreach ($orderItem['items'] as $value) {
