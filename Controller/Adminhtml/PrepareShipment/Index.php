@@ -363,12 +363,12 @@ class Index extends \Magento\Backend\App\Action
         }
 
         foreach ($packings as $value) {
-            $packing = $value['source_code'] == $sourceCode ? $value : NULL;
+            $packing[] = $value['source_code'] == $sourceCode ? $value : NULL;
         }
 
         $packing = array_filter($packing,function($value){ return $value != NULL; });
 
-        $packing["dimensions"] = $this->getBoxWeight($packing);
+        $packing["dimensions"] = $this->getBoxWeight(reset($packing));
         $boxes[] = $packing;
 
         return $boxes;
