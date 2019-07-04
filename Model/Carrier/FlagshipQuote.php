@@ -299,8 +299,12 @@ class FlagshipQuote
 
         $amount = array_sum($rate['total']);
         $markup = $this->getConfigData('markup');
+        $flatFee = $this->getConfigData('flat_fee');
         if($markup > 0){
             $amount += ($markup/100)*$amount;
+        }
+        if($flatFee > 0){
+            $amount += $flatFee;
         }
 
         $method->setPrice($amount);
