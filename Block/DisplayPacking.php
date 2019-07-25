@@ -108,7 +108,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return $this->items;
     }
 
-    public function getItems($items) : array {
+    public function getItems(array $items) : array {
 
         $this->items = [];
         foreach ($items as $item) {
@@ -121,7 +121,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return $this->flagship->getSettings()["packings"];
     }
 
-    public function getPayload($items) : ?array {
+    public function getPayload(array $items) : ?array {
 
         if(is_null($this->getBoxes())){
             $this->flagship->logError("Packing Boxes not set");
@@ -193,7 +193,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     }
 
 
-    protected function getOrderItemsForSource($orderItem){
+    protected function getOrderItemsForSource(array $orderItem){
         foreach ($orderItem['items'] as $value) {
             $this->forComplexItem($value);
         }
@@ -213,7 +213,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
     }
 
-    protected function getPackingDetailsArray($packings,$sourceCode) : int {
+    protected function getPackingDetailsArray(\Flagship\Shipping\Collections\PackingCollection $packings,string $sourceCode) : int {
         foreach ($packings as $packing) {
             $this->packingDetails[] = [
                 "source_code" => $sourceCode,

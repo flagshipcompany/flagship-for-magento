@@ -45,12 +45,12 @@ class FlagshipQuote
         \Flagship\Shipping\Logger\Logger $flagshipLogger,
         \Flagship\Shipping\Block\Flagship $flagship,
         \Flagship\Shipping\Block\DisplayPacking $packing,
-        \Magento\InventorySalesApi\Model\StockByWebsiteIdResolverInterface $stockByWebsiteIdResolver,
-        \Magento\InventoryApi\Api\GetSourcesAssignedToStockOrderedByPriorityInterface $getSourcesAssignedToStockOrderedByPriority,
         \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
         \Magento\Store\Model\StoreManager $storeManager,
         \Magento\Inventory\Model\SourceRepository $sourceRepository,
-        \Magento\Sales\Model\ResourceModel\Order\Shipment\CollectionFactory $shipmentCollection
+        \Magento\Sales\Model\ResourceModel\Order\Shipment\CollectionFactory $shipmentCollection,
+        \Magento\Customer\Model\Session $customerSession,
+        \Magento\Customer\Model\ResourceModel\Address\Collection $customerAddressCollection
     ) {
         $this->request = $request;
         $this->cart = $cart;
@@ -60,12 +60,12 @@ class FlagshipQuote
         $this->flagship = $flagship;
         $this->flagshipLoggingEnabled = $this->flagship->getSettings()["log"];
         $this->packing = $packing;
-        $this->stockByWebsiteIdResolver = $stockByWebsiteIdResolver;
-        $this->getSourcesAssignedToStockOrderedByPriority = $getSourcesAssignedToStockOrderedByPriority;
         $this->storeManager = $storeManager;
         $this->getSourceCodesBySkus = $getSourceCodesBySkus;
         $this->sourceRepository = $sourceRepository;
         $this->shipmentCollection = $shipmentCollection;
+        $this->customerSession = $customerSession;
+        $this->customerAddressCollection = $customerAddressCollection;
         parent::__construct(
             $scopeConfig,
             $rateErrorFactory,
@@ -100,7 +100,7 @@ class FlagshipQuote
         return true;
     }
 
-    public function getTracking(string $tracking) {
+    public function getTracking(string $tracking) : \Magento\Shipping\Model\Tracking\Result {
 
         $result = $this->_trackFactory->create();
         $status = $this->_trackStatusFactory->create();
@@ -190,40 +190,61 @@ class FlagshipQuote
         return $methods;
     }
 
-    public function collectRates(RateRequest $request)
-    {
+    public function collectRates(RateRequest $request) : \Magento\Shipping\Model\Rate\Result {
 
         $sourceCodes = $this->getSourcesForOrder();
 
-        $rates = [];
+        $orderItems = [];
+        $cartItems = $this->cart->getQuote()->getAllVisibleItems();
+        $sku = [];
+        foreach ($cartItems as $item) {
 
-        foreach ($sourceCodes as $sourceCode) {
-            $source = $this->sourceRepository->get($sourceCode);
-            $payload = $this->getPayload($request,$source);
+            $sku = $item->getProduct()->getSku();
+            $sourceCode = implode(",", $this->getSourceCodesBySkus->execute([$sku]));
 
-            $quotes = $this->getQuotes($payload);
+            $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
+            $orderItems[$sourceCode]['items'][] = $item;
 
-            foreach ($quotes as $quote) {
-
-                $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['total'][] = $quote->getTotal();
-
-                $courierName = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
-                $carrier = in_array($courierName, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
-                $methodTitle = substr($courierName, strpos($courierName,' '));
-
-                $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['details'] = [
-                    'carrier' => $carrier,
-                    'carrier_title' => $quote->rate->service->courier_name,
-                    'method' => $quote->rate->service->courier_code,
-                    'method_title' => $methodTitle,
-                    'estimated_delivery_date' => $quote->rate->service->estimated_delivery_date
-                ];
-
-            }
         }
 
-        $payload = $this->getPayload($request,$source);
+        $rates = [];
 
+        foreach ($orderItems as $orderItem) {
+            $payload = $this->getPayload($request,$orderItem["source"],$orderItem["items"]);
+            $rates = $this->getRatesArray($payload,$rates);
+        }
+
+        return $this->getRatesResult($rates);
+    }
+
+    protected function getRates(\Flagship\Shipping\Collections\RatesCollection $quotes, array $rates) : array {
+        foreach ($quotes as $quote) {
+
+            $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['total'][] = $quote->getTotal();
+
+            $courierName = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
+            $carrier = in_array($courierName, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
+            $methodTitle = substr($courierName, strpos($courierName,' '));
+
+            $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['details'] = [
+                'carrier' => $carrier,
+                'carrier_title' => $quote->rate->service->courier_name,
+                'method' => $quote->rate->service->courier_code,
+                'method_title' => $methodTitle,
+                'estimated_delivery_date' => $quote->rate->service->estimated_delivery_date
+            ];
+
+        }
+        return $rates;
+    }
+
+    protected function getRatesArray(array $payload,array $rates) : array{
+        $quotes = $this->getQuotes($payload);
+        $rates = $this->getRates($quotes,$rates);
+        return $rates;
+    }
+
+    protected function getRatesResult(array $rates) : \Magento\Shipping\Model\Rate\Result {
         $result = $this->_rateFactory->create();
 
         try{
@@ -232,6 +253,7 @@ class FlagshipQuote
             foreach ($rates as $rate) {
                 $result->append($this->prepareShippingMethods($rate));
             }
+            $result->append($this->prepareDistributionMethod());
             return $result;
         }
         catch(\Magento\Framework\Exception\LocalizedException $e){
@@ -245,7 +267,21 @@ class FlagshipQuote
         }
     }
 
-    protected function getSourcesForOrder(){
+    protected function prepareDistributionMethod(){
+        $method = $this->_rateMethodFactory->create();
+        $carrier = $this->customerSession->getDistribution() == 'on' ? self::SHIPPING_CODE : 'distribution' ;
+        $method->setCarrier($carrier);
+        $method->setCarrierTitle('Method not available for checkout');
+        $method->setMethod('distribution');
+        $method->setMethodTitle('Distribution');
+        $amount = 0.00;
+        $method->setPrice($amount);
+        $method->setCost($amount);
+        $this->flagship->logInfo('Prepared distribution method');
+        return $method;
+    }
+
+    protected function getSourcesForOrder() : array{
         $cartItems = $this->cart->getQuote()->getAllVisibleItems();
         $sku = [];
         foreach ($cartItems as $item) {
@@ -254,18 +290,10 @@ class FlagshipQuote
         return $this->getSourceCodesBySkus->execute($sku);
     }
 
-    protected function getSourcesForWebsite(){
-        $websiteId = $this->storeManager->getWebsite()->getId();
-        $stockId = $this->stockByWebsiteIdResolver->execute((int)$websiteId)->getId();
-        $sources = $this->getSourcesAssignedToStockOrderedByPriority->execute((int)$stockId);
-
-        return $sources;
-    }
-
-    protected function getAllowedMethodsArray(\Flagship\Shipping\Collections\AvailableServicesCollection $services){
+    protected function getAllowedMethodsArray(\Flagship\Shipping\Collections\AvailableServicesCollection $services) : array {
         foreach ($services as $service) {
             $methods[] = [
-                'value' => $service->getDescription(),
+                'value' => $service->getDescription(), 
                 'label' =>  __($service->getDescription())
             ];
         }
@@ -284,7 +312,7 @@ class FlagshipQuote
         return $orderId;
     }
 
-    protected function prepareShippingMethods($rate){
+    protected function prepareShippingMethods(array $rate){
 
         $method = $this->_rateMethodFactory->create();
 
@@ -323,19 +351,12 @@ class FlagshipQuote
         }
     }
 
-    protected function getPayload(RateRequest $request,$source) : array {
-
-        $insuranceFlag  = $this->getConfigData('insuranceflag');
-
-        $residentialFlag = $this->getConfigData('force_residential');
-
-
+    protected function getSenderAddress(\Magento\Inventory\Model\Source $source) : array {
         $from_city = is_null($source->getCity()) ? $this->_scopeConfig->getValue('general/store_information/city',\Magento\Store\Model\ScopeInterface::SCOPE_STORE) : $source->getCity() ;
         $from_country = is_null($source->getCountryId()) ? $this->_scopeConfig->getValue('general/store_information/country_id',\Magento\Store\Model\ScopeInterface::SCOPE_STORE) : $source->getCountryId();
         $from_state =  is_null($source->getRegionId()) ? $this->getState($this->_scopeConfig->getValue('general/store_information/region_id',\Magento\Store\Model\ScopeInterface::SCOPE_STORE)) : $this->getState($source->getRegionId());
         $from_postcode = is_null($source) ? $this->_scopeConfig->getValue('general/store_information/postcode',\Magento\Store\Model\ScopeInterface::SCOPE_STORE) : $source->getPostcode();
 
-        $toCity = empty($request->getDestCity()) ? 'Toronto' : $request->getDestCity();
         $from = [
             "city"  => $from_city,
             "country"   => $from_country,
@@ -344,6 +365,13 @@ class FlagshipQuote
             "is_commercial" => true
         ];
 
+        return $from;
+    }
+
+    protected function getReceiverAddress(RateRequest $request) : array {
+
+        $toCity = empty($request->getDestCity()) ? 'Toronto' : $request->getDestCity();
+
         $to = [
             "city" => $toCity,
             "country"=> $request->getDestCountryId(),
@@ -351,13 +379,32 @@ class FlagshipQuote
             "postal_code"=> $request->getDestPostcode(),
             "is_commercial"=>false
         ];
+
+        $to = $this->setResidentialFlag($to);
+        return $to;
+    }
+
+    protected function setResidentialFlag(array $to) : array {
+        $residentialFlag = $this->getConfigData('force_residential');
         if(!$residentialFlag){
             $to["is_commercial"] = true;
         }
+        return $to;
+    }
+
+
+    protected function getPayload(RateRequest $request = null,\Magento\Inventory\Model\Source $source,array $items) : array {
+
+        $insuranceFlag  = $this->getConfigData('insuranceflag');
+
+        $from = $this->getSenderAddress($source);
+
+        $to = $this->getReceiverAddress($request);
+
 
         $packages = [
 
-                "items" => $this->getItemsArray(),
+                "items" => $this->getItemsArray($items),
                 "units" => $this->getUnits(),
                 "type" => "package",
                 "content" => "goods"
@@ -370,6 +417,7 @@ class FlagshipQuote
         $options = [
             "address_correction" => true
         ];
+
         $insuranceValue = $this->getInsuranceAmount();
         if($insuranceFlag && $insuranceValue > 0 ){
             $options["insurance"] = [
@@ -392,7 +440,7 @@ class FlagshipQuote
         return $total;
     }
 
-    protected function getState($regionId) : string {
+    protected function getState(string $regionId) : string {
 
         $shipperRegion = $this->_regionFactory->create()->load($regionId);
         $shipperRegionCode =$shipperRegion->getCode();
@@ -407,8 +455,9 @@ class FlagshipQuote
         return 'imperial';
     }
 
-    protected function getPayloadForPacking() : ?array {
-        $cartItems = $this->cart->getQuote()->getAllVisibleItems();
+    protected function getPayloadForPacking(array $items) : ?array {
+
+        $cartItems = $items;
         $this->items = [];
         foreach ($cartItems as $item) {
 
@@ -432,8 +481,7 @@ class FlagshipQuote
         return $payload;
     }
 
-    protected function getPayloadItems(array $temp,\Magento\Quote\Model\Quote\Item $item)
-    {
+    protected function getPayloadItems(array $temp,\Magento\Quote\Model\Quote\Item $item) : array {
         for($i=0;$i<$item->getQty();$i++){
             $this->items[] = $temp;
         }
@@ -441,16 +489,16 @@ class FlagshipQuote
 
     }
 
-    protected function getItemsArray() : array {
+    protected function getItemsArray(array $items) : array {
 
         $boxes = $this->packing->getBoxes();
-        $items = [];
+        $returnItems = [];
         if(is_null($boxes)){
-            $this->getPayloadForPacking();
+            $this->getPayloadForPacking($items);
             return $this->items;
         }
 
-        $packings = $this->packing->getPackingsFromFlagship($this->getPayloadForPacking());
+        $packings = $this->packing->getPackingsFromFlagship($this->getPayloadForPacking($items));
 
 
         foreach ($packings as $packing) {
@@ -461,9 +509,9 @@ class FlagshipQuote
                 'weight' => $packing->getWeight(),
                 'description' => $packing->getBoxModel()
             ];
-            $items[] = $temp;
+            $returnItems[] = $temp;
         }
-        return $items;
+        return $returnItems;
     }
 
     protected function getQuotes(array $payload) : \Flagship\Shipping\Collections\RatesCollection {

@@ -18,7 +18,9 @@ class Flagship extends \Magento\Framework\View\Element\Template{
         $this->config = $config;
         $this->scopeConfig = $scopeConfig;
         $this->loggingEnabled = isset($this->getSettings()["log"]) ? $this->getSettings()["log"] : 0 ;
-        $this->getEnv();
+        if(!defined('SMARTSHIP_WEB_URL')){
+            $this->getEnv();
+        }
     }
 
     public function getSettings() : array {
