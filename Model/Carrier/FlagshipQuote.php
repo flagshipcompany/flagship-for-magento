@@ -115,6 +115,15 @@ class FlagshipQuote
             $status->setCarrierTitle('Your FlagShip shipment is still Unconfirmed');
         }
 
+        if($tracking == 'Distribution'){
+            $tracking = 'Contact FlagShip for tracking';
+            $url = 'https://www.flagshipcompany.com';
+            $status->setTracking($tracking);
+            $status->setUrl($url);
+            $result->append($status);
+            return $result;
+        }
+
         if(stristr($tracking, 'Unconfirmed') === false ){ //shipment confirmed
 
             $shipment = $this->getShipmentFromFlagship($tracking);
@@ -180,8 +189,7 @@ class FlagshipQuote
         }
     }
 
-    public function getAllowedMethods() : array
-    {
+    public function getAllowedMethods() : array {
         $allowed = explode(',', $this->getConfigData('allowed_methods'));
         $methods = [];
         foreach ($allowed as $value) {
@@ -197,30 +205,65 @@ class FlagshipQuote
         $orderItems = [];
         $cartItems = $this->cart->getQuote()->getAllVisibleItems();
         $sku = [];
+
         foreach ($cartItems as $item) {
 
             $sku = $item->getProduct()->getSku();
             $sourceCode = implode(",", $this->getSourceCodesBySkus->execute([$sku]));
-
             $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
             $orderItems[$sourceCode]['items'][] = $item;
-
         }
 
         $rates = [];
-
+        $ltlFlagArray = [];
         foreach ($orderItems as $orderItem) {
             $payload = $this->getPayload($request,$orderItem["source"],$orderItem["items"]);
+            $ltlFlagArray[] = $this->checkPayloadForLtl($payload);
             $rates = $this->getRatesArray($payload,$rates);
         }
 
+        $ltlFlag = in_array(1,$ltlFlagArray);
+
+        if($ltlFlag){
+            return $this->rateForLtl($ltlFlag);
+        }
         return $this->getRatesResult($rates);
+    }
+
+    protected function rateForLtl(int $ltlFlag) : \Magento\Shipping\Model\Rate\Result {
+        $result = $this->_rateFactory->create();
+        $method = $this->_rateMethodFactory->create();
+        $carrier = $ltlFlag ? self::SHIPPING_CODE : 'logistics' ;
+        $method->setCarrier($carrier);
+        $method->setCarrierTitle('Method not available for checkout');
+        $method->setMethod('logistics');
+        $method->setMethodTitle('Logistics');
+        $amount = 0.00;
+        $method->setPrice($amount);
+        $method->setCost($amount);
+        $this->flagship->logInfo('Prepared ltl method');
+        return $result->append($method);
+    }
+
+    protected function checkPayloadForLtl(array $payload) : int {
+        $items = $payload["packages"]["items"];
+        $totalBase = 0;
+        foreach ($items as $item) {
+            $totalBase += ($item["length"] * $item["width"]);
+        }
+
+        if($totalBase > 48*48){
+            return 1;
+        }
+        return 0;
     }
 
     protected function getRates(\Flagship\Shipping\Collections\RatesCollection $quotes, array $rates) : array {
         foreach ($quotes as $quote) {
 
             $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['total'][] = $quote->getTotal();
+            $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['subtotal'][] = $quote->getSubtotal();
+            $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['taxesTotal'][] = $quote->gettaxesTotal();
 
             $courierName = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
             $carrier = in_array($courierName, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
@@ -231,7 +274,9 @@ class FlagshipQuote
                 'carrier_title' => $quote->rate->service->courier_name,
                 'method' => $quote->rate->service->courier_code,
                 'method_title' => $methodTitle,
-                'estimated_delivery_date' => $quote->rate->service->estimated_delivery_date
+                'estimated_delivery_date' => $quote->rate->service->estimated_delivery_date,
+                'subtotal' => $quote->rate->price->subtotal,
+                'total' => $quote->rate->price->total
             ];
 
         }
@@ -267,7 +312,7 @@ class FlagshipQuote
         }
     }
 
-    protected function prepareDistributionMethod(){
+    protected function prepareDistributionMethod() : \Magento\Quote\Model\Quote\Address\RateResult\Method {
         $method = $this->_rateMethodFactory->create();
         $carrier = $this->customerSession->getDistribution() == 'on' ? self::SHIPPING_CODE : 'distribution' ;
         $method->setCarrier($carrier);
@@ -281,7 +326,7 @@ class FlagshipQuote
         return $method;
     }
 
-    protected function getSourcesForOrder() : array{
+    protected function getSourcesForOrder() : array {
         $cartItems = $this->cart->getQuote()->getAllVisibleItems();
         $sku = [];
         foreach ($cartItems as $item) {
@@ -293,7 +338,7 @@ class FlagshipQuote
     protected function getAllowedMethodsArray(\Flagship\Shipping\Collections\AvailableServicesCollection $services) : array {
         foreach ($services as $service) {
             $methods[] = [
-                'value' => $service->getDescription(), 
+                'value' => $service->getDescription(), //$service->getFlagshipCode()
                 'label' =>  __($service->getDescription())
             ];
         }
@@ -312,7 +357,7 @@ class FlagshipQuote
         return $orderId;
     }
 
-    protected function prepareShippingMethods(array $rate){
+    protected function prepareShippingMethods(array $rate) : \Magento\Quote\Model\Quote\Address\RateResult\Method {
 
         $method = $this->_rateMethodFactory->create();
 
@@ -325,7 +370,7 @@ class FlagshipQuote
         }
         $method->setMethodTitle($methodTitle);
 
-        $amount = array_sum($rate['total']);
+        $amount = array_sum($rate['subtotal']);
         $markup = $this->getConfigData('markup');
         $flatFee = $this->getConfigData('flat_fee');
         if($markup > 0){
@@ -334,7 +379,8 @@ class FlagshipQuote
         if($flatFee > 0){
             $amount += $flatFee;
         }
-
+        $shipmentTax = array_sum($rate['taxesTotal']);
+        $amount += $shipmentTax;
         $method->setPrice($amount);
         $method->setCost($amount);
         $this->flagship->logInfo('Prepared rate for '. $methodTitle);

@@ -32,10 +32,22 @@ class Index extends \Magento\Backend\App\Action{
         $weight = $this->getRequest()->getParam('weight');
         $maxWeight = $this->getRequest()->getParam('maxWeight');
 
+        if(isset($model) && !$this->validateBox($length,$width,$height)){
+            return $this->_redirect($this->getUrl('shipping/listboxes/Index'),$this->messageManager->addErrorMessage("Box is too big. Please add a smaller box"));
+        }
+
         if(isset($model) && $this->createBox($model,$length,$width,$height,$weight,$maxWeight) ){
             return $this->_redirect($this->getUrl('shipping/listboxes/Index'),$this->messageManager->addSuccessMessage("Success!Box added"));
         }
         return $this->resultPageFactory->create();
+    }
+
+    protected function validateBox(float $length, float $width, float $height){
+        $total = $length + 2*$width + 2*$height;
+        if($total < 165){
+            return TRUE;
+        }
+        return FALSE;
     }
 
     protected function createBox(string $model,string $length,string $width,string $height,string $weight,string $maxWeight) : bool {

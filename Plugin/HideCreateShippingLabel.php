@@ -25,7 +25,6 @@ class HideCreateShippingLabel{
 
         $this->order = $subject->getShipment()->getOrder();
         $this->shipment = $subject->getShipment();
-
         $flagshipId = $this->shipment->getDataByKey("flagship_shipment_id");
 
         if($this->order->hasShipments() && $flagshipId === NULL ){ //magento shipping
@@ -85,7 +84,7 @@ class HideCreateShippingLabel{
     }
 
     protected function updateShipmentCommentForFlagshipShipment(array $trackingDetails) : bool {
-        if( isset($trackingDetails["carrierCode"]) && strcasecmp($trackingDetails["carrierCode"],'flagship') === 0 ){
+        if( isset($trackingDetails["carrierCode"]) && strcasecmp($trackingDetails["carrierCode"],'flagship') === 0 &&  $trackingDetails["trackingNumber"] != 'Logistics' && $trackingDetails["trackingNumber"] != 'Distribution' ){
             $shipment = $this->getFlagshipShipmentByTrackingNumber($trackingDetails["trackingNumber"]);
             $this->updateShipmentComment($shipment[0]);
             return TRUE;

@@ -13,6 +13,10 @@
                     <label>Show Estimated Delivery Date</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
+                <field id="ltl_email" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Logistics email should be sent to</label>
+                    <comment>Add multiple email addresses separated by comma</comment>
+                </field>
                 <field id="insuranceflag" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Insurance on all shipments</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>

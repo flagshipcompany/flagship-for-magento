@@ -218,7 +218,9 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             $this->packingDetails[] = [
                 "source_code" => $sourceCode,
                 "box_model" => $packing->getBoxModel(),
-                "items" => $packing->getItems()
+                "items" => $packing->getItems(),
+                "dimensions" => $packing->getLength().'x'.$packing->getWidth().'x'.$packing->getHeight(),
+                "weight" => $packing->getWeight()
             ];
         }
 
