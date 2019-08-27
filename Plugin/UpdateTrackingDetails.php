@@ -45,7 +45,7 @@ class UpdateTrackingDetails{
         return;
     }
 
-    protected function updateTrackingDetails($flagshipId,$shipment){
+    protected function updateTrackingDetails(int $flagshipId,\Magento\Sales\Model\Order\Shipment $shipment){
         if(is_null($flagshipId)){
             return NULL;
         }
@@ -53,7 +53,7 @@ class UpdateTrackingDetails{
         $this->updateTrackingForConfirmedShipment($flagshipShipment,$shipment);
     }
 
-    protected function updateTrackingForConfirmedShipment($flagshipShipment,$shipment) : bool {
+    protected function updateTrackingForConfirmedShipment(\Flagship\Shipping\Objects\Shipment $flagshipShipment,\Magento\Sales\Model\Order\Shipment $shipment) : bool {
 
         if($this->tracking->isShipmentConfirmed($flagshipShipment,$this->order->getId())){
             $this->tracking->updateShipmentTrackingData($flagshipShipment,$shipment);

@@ -57,14 +57,14 @@ class Index extends \Magento\Backend\App\Action{
         return $logging;
     }
 
-    protected function setEnv($testEnv){
+    protected function setEnv($testEnv) : bool {
         if($this->setConfig('test_env',$testEnv)){
             return TRUE;
         }
         return $this->updateConfig('test_env',$testEnv);
     }
 
-    protected function setConfig(string $name, string $value){
+    protected function setConfig(string $name, string $value) : bool {
         if(!$this->ifSettingExists($name)){
             $this->saveConfig($name,$value);
             return TRUE;
@@ -72,8 +72,7 @@ class Index extends \Magento\Backend\App\Action{
         return FALSE;
     }
 
-    protected function updateConfig(string $name, string $value){
-        var_dump("thing_to_debug"); var_dump($value);
+    protected function updateConfig(string $name, string $value) : bool {
         $collection = $this->config->getCollection()->addFieldToFilter('name',['eq' => $name]);
         $recordId = $collection->getFirstItem()->getId();
         $record = $this->config->load($recordId);
@@ -116,6 +115,7 @@ class Index extends \Magento\Backend\App\Action{
             catch(\Exception $e){
                 $this->flagship->logError($e->getMessage());
                 $this->messageManager->addErrorMessage(__($e->getMessage()));
+                return FALSE;
             }
     }
 }

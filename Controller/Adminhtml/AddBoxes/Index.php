@@ -42,7 +42,7 @@ class Index extends \Magento\Backend\App\Action{
         return $this->resultPageFactory->create();
     }
 
-    protected function validateBox(float $length, float $width, float $height){
+    protected function validateBox(float $length, float $width, float $height) : bool {
         $total = $length + 2*$width + 2*$height;
         if($total < 165){
             return TRUE;

@@ -17,14 +17,14 @@ class UpdateShipmentDetails{
 
     public function execute(){
         $collection = $this->shipment->getCollection()->addFieldToFilter('flagship_shipment_id',['notnull' => true])->addFieldToFilter('shipping_label',['null' => true ]);
-        
+
         foreach ($collection as $shipment) {
             $flagshipShipmentId = $shipment->getDataByKey('flagship_shipment_id');
         }
         return;
     }
 
-    protected function isShipmentConfirmed($flagshipShipmentId){
+    protected function isShipmentConfirmed(int $flagshipShipmentId) : int {
         $token = $this->flagship->getSettings()["token"];
         $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
         $flagshipShipment = $flagship->getShipmentByIdRequest($flagshipShipmentId)->execute();
@@ -35,7 +35,7 @@ class UpdateShipmentDetails{
         return 0;
     }
 
-    protected function getTrackingStatus(int $flagshipShipmentId){
+    protected function getTrackingStatus(int $flagshipShipmentId) : int {
             $this->tracking->updateShipmentTrackingData($flagshipShipment);
             return 0;
     }

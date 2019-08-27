@@ -9,14 +9,14 @@ class SendToFlagshipButton{
         return;
     }
 
-    public function addSendToFlagshipButton($subject){
+    public function addSendToFlagshipButton($subject) : ?int {
         $order = NULL;
 
         $order = !is_null($subject->getShipment()) ? $subject->getShipment()->getOrder() : $subject->getOrder();
 
         if(!$order->hasShipments()){
             $orderId = $order->getId();
-            return $subject->addButton(
+            $subject->addButton(
                 'send_to_flagship',
                 [
                     'label' => __('Send To FlagShip &#8618;'),
@@ -25,6 +25,7 @@ class SendToFlagshipButton{
                     'onclick' => sprintf("location.href = '%s';", $subject->getUrl('shipping/prepareShipment',['order_id' => $orderId]))
                 ]
             );
+            return 0;
         }
         return NULL;
     }

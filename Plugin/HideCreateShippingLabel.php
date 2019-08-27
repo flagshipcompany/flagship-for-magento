@@ -60,7 +60,7 @@ class HideCreateShippingLabel{
         return FALSE;
     }
 
-    public function updateShipmentTrackingData(\Flagship\Shipping\Objects\Shipment $flagshipShipment,\Magento\Sales\Model\Order\Shipment $shipment = NULL) : bool {
+    public function updateShipmentTrackingData(\Flagship\Shipping\Objects\Shipment $flagshipShipment, \Magento\Sales\Model\Order\Shipment $shipment = NULL) : bool {
         if(is_null($shipment)){
             $shipment = $this->shipment;
         }
@@ -93,7 +93,7 @@ class HideCreateShippingLabel{
         return $details;
     }
 
-    protected function getFlagshipShipmentByTrackingNumber($trackingNumber) : \Flagship\Shipping\Collections\GetShipmentListCollection {
+    protected function getFlagshipShipmentByTrackingNumber(string $trackingNumber) : \Flagship\Shipping\Collections\GetShipmentListCollection {
 
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
@@ -139,7 +139,6 @@ class HideCreateShippingLabel{
 
         foreach ($comments as $comment) {
             $comment->setComment($newComment);
-
         }
 
         $shipment->save();
@@ -178,9 +177,9 @@ class HideCreateShippingLabel{
         return $this->shipment->getDataByKey('flagship_shipment_id');
     }
 
-    protected function createButtonForShipmentTracking(\Magento\Shipping\Block\Adminhtml\View $subject){
+    protected function createButtonForShipmentTracking(\Magento\Shipping\Block\Adminhtml\View $subject) : int {
         $shipmentId =$this->getFlagshipShipmentId();
-        return $subject->addButton(
+        $subject->addButton(
               'flagship_tracking',
               [
                   'label' => __('FlagShip Shipment : '.$shipmentId),
@@ -189,5 +188,6 @@ class HideCreateShippingLabel{
                   'onclick' =>'popWin("'.SMARTSHIP_WEB_URL.'/shipping/'.$shipmentId.'/overview","gallery","width=1000,height=700,left=200,top=100,location=no,status=yes,scrollbars=yes,resizable=yes")'
               ]
         );
+        return 0;
     }
 }

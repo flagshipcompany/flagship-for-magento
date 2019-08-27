@@ -35,6 +35,7 @@ class Delete extends \Magento\Backend\App\Action{
         } catch(\Exception $e){
             $this->flagship->logError($e->getMessage());
             $this->messageManager->addErrorMessage($e->getMessage());
+            return; 
         }
     }
 }

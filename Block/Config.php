@@ -30,7 +30,7 @@ class Config extends \Magento\Framework\View\Element\Template{
         return  array_key_exists("token",$this->flagship->getSettings()) ;
     }
 
-    public function getSettings(){
+    public function getSettings() : array {
         return $this->flagship->getSettings();
     }
 

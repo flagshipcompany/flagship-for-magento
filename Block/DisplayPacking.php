@@ -193,7 +193,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     }
 
 
-    protected function getOrderItemsForSource(array $orderItem){
+    protected function getOrderItemsForSource(array $orderItem) : int {
         foreach ($orderItem['items'] as $value) {
             $this->forComplexItem($value);
         }

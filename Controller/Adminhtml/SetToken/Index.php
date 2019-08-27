@@ -39,7 +39,7 @@ class Index extends \Magento\Backend\App\Action{
             return $this->_redirect($this->_redirect->getRefererUrl());
         }
 
-        $url = $testEnv ? "https://test-api.smartship.io" : "http://127.0.0.1:3002" ;
+        $url = SMARTSHIP_API_URL;
 
         if($this->isSetTokenSame($token,$url)){
             $this->flagship->logInfo('Same token is set');
