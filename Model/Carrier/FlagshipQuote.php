@@ -486,8 +486,11 @@ class FlagshipQuote
         return $total;
     }
 
-    protected function getState(string $regionId) : string {
-
+    protected function getState(?string $regionId) : ?string {
+        if(is_null($regionId)){
+            $this->flagship->logError("Region not set");
+            return NULL;
+        }
         $shipperRegion = $this->_regionFactory->create()->load($regionId);
         $shipperRegionCode =$shipperRegion->getCode();
         return $shipperRegionCode;
@@ -506,7 +509,6 @@ class FlagshipQuote
         $cartItems = $items;
         $this->items = [];
         foreach ($cartItems as $item) {
-
             $weight = $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight();
             $temp = $this->packing->getItemsArray($item);
             $temp["weight"] = $weight;
@@ -545,7 +547,6 @@ class FlagshipQuote
         }
 
         $packings = $this->packing->getPackingsFromFlagship($this->getPayloadForPacking($items));
-
 
         foreach ($packings as $packing) {
             $temp = [
