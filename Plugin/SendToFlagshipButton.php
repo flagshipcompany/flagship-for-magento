@@ -13,7 +13,7 @@ class SendToFlagshipButton{
         $order = NULL;
 
         $order = !is_null($subject->getShipment()) ? $subject->getShipment()->getOrder() : $subject->getOrder();
-        
+
         if(!$order->hasShipments()){
             $orderId = $order->getId();
             return $subject->addButton(

@@ -24,7 +24,7 @@ class UpdateTrackingDetails{
         $shipments = $this->order->getShipmentsCollection();
         $orderSources = $this->prepareShipment->getSourceCodesForOrderItems();
 
-        if(!$this->scopeConfig->getValue('carriers/flagship/show_button')){
+        if(!$this->moduleManager->isEnabled('Flagship_Fulfillment')){
             $this->sendToFlagshipButton->addSendToFlagshipButton($subject);
         }
 

@@ -91,9 +91,9 @@ class Index extends \Magento\Backend\App\Action
 
         foreach ($orderItems as $orderItem) {
             $payload = $this->getPayload($orderItem);
-            // var_dump($payload); die();
             $this->prepareShipment($flagship,$payload,$orderItem);
         }
+        $this->getOrder()->setIsInProcess(true)->save();
         return $this->_redirect($this->getUrl('sales/order/view',['order_id' => $orderId]));
     }
 
