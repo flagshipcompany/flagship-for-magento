@@ -177,20 +177,26 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
      *@params \Magento\Sales\Model\Order\Item or \Magento\Quote\Model\Quote\Item
      */
 
-    public function getItemsArray($item) : array
-    {
-        return [
-                "length" => is_null($item->getProduct()->getDataByKey('length')) ? (is_null($item->getProduct()->getDataByKey('ts_dimensions_length')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_length')) ) : intval($item->getProduct()->getDataByKey('length')),
+     public function getItemsArray($item) : array
+     {
+         $length = is_null($item->getProduct()->getDataByKey('length')) ? (is_null($item->getProduct()->getDataByKey('ts_dimensions_length')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_length')) ) : intval($item->getProduct()->getDataByKey('length'));
 
-                "width" => is_null($item->getProduct()->getDataByKey('width')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_width')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_width')) : intval($item->getProduct()->getDataByKey('width')),
+         $width = is_null($item->getProduct()->getDataByKey('width')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_width')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_width')) : intval($item->getProduct()->getDataByKey('width'));
 
-                "height" => is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_height')) : intval($item->getProduct()->getDataByKey('height')),
+         $height = is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_height')) : intval($item->getProduct()->getDataByKey('height'));
 
-                "weight" => is_null($item->getProduct()->getWeight()) || $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight(),
+         return [
+                 "length" => $length <= 0 ? 1 : $length,
 
-                "description" => strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"].' - '.$item->getProductOptions()["simple_name"] : $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
-            ];
-    }
+                 "width" => $width <= 0 ? 1 : $width,
+
+                 "height" => $height <= 0 ? 1 : $height,
+
+                 "weight" => is_null($item->getProduct()->getWeight()) || $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight(),
+
+                 "description" => strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"].' - '.$item->getProductOptions()["simple_name"] : $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
+             ];
+     }
 
 
     protected function getOrderItemsForSource(array $orderItem) : int {
