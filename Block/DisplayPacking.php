@@ -14,7 +14,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         \Magento\Framework\View\Element\Template\Context $context,
         \Magento\Framework\App\ResourceConnection $resource,
         \Magento\Sales\Model\OrderRepository $orderRepository,
-        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Helper\Flagship $flagship,
         \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
         \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
         \Magento\Inventory\Model\SourceRepository $sourceRepository,

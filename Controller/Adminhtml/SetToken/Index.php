@@ -19,7 +19,7 @@ class Index extends \Magento\Backend\App\Action{
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Flagship\Shipping\Model\ConfigFactory $configFactory,
         \Flagship\Shipping\Model\Config $config,
-        \Flagship\Shipping\Block\Flagship $flagship
+        \Flagship\Shipping\Helper\Flagship $flagship
     ) {
          parent::__construct($context);
          $this->resultPageFactory = $resultPageFactory;

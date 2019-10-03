@@ -8,7 +8,7 @@ class UpdateShipmentDetails{
     public function __construct(
         \Magento\Sales\Model\Order\Shipment $shipment,
         \Flagship\Shipping\Plugin\HideCreateShippingLabel $tracking,
-        \Flagship\Shipping\Block\Flagship $flagship
+        \Flagship\Shipping\Helper\Flagship $flagship
     ){
         $this->shipment = $shipment;
         $this->tracking = $tracking;

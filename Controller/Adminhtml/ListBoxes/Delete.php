@@ -12,7 +12,7 @@ class Delete extends \Magento\Backend\App\Action{
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
         \Flagship\Shipping\Logger\Logger $logger,
-        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Helper\Flagship $flagship,
         \Flagship\Shipping\Model\AddBoxes $addBoxes
     ) {
 

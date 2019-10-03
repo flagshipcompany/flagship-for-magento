@@ -33,7 +33,7 @@ class Index extends \Magento\Backend\App\Action
         \Magento\Inventory\Model\SourceRepository $sourceRepository,
         \Flagship\Shipping\Block\DisplayPacking $displayPackings,
         \Magento\Sales\Api\Data\ShipmentExtensionFactory $shipmentExtensionFactory,
-        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Helper\Flagship $flagship,
         \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
         \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
         \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId

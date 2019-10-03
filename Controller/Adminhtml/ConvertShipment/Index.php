@@ -7,7 +7,7 @@ class Index extends \Magento\Backend\App\Action{
         \Magento\Backend\App\Action\Context $context,
         \Magento\Framework\Registry $_coreRegistry,
         \Magento\Framework\View\Result\PageFactory $resultPageFactory,
-        \Flagship\Shipping\Block\Flagship $flagship
+        \Flagship\Shipping\Helper\Flagship $flagship
     )
     {
         parent::__construct($context);

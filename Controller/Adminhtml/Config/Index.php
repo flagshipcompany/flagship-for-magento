@@ -10,7 +10,7 @@ class Index extends \Magento\Backend\App\Action{
         \Magento\Backend\App\Action\Context $context,
         \Magento\Framework\View\Result\PageFactory $resultPageFactory,
         \Flagship\Shipping\Logger\Logger $logger,
-        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Helper\Flagship $flagship,
         \Flagship\Shipping\Model\ConfigFactory $configFactory,
         \Flagship\Shipping\Model\Config $config
     ) {

@@ -6,7 +6,9 @@ class Config extends \Magento\Framework\View\Element\Template{
 
     protected $flagship;
 
-    public function __construct(\Magento\Framework\View\Element\Template\Context $context, \Flagship\Shipping\Block\Flagship $flagship){
+    public function __construct(
+        \Magento\Framework\View\Element\Template\Context $context, 
+        \Flagship\Shipping\Helper\Flagship $flagship){
         parent::__construct($context);
         $this->flagship = $flagship;
     }

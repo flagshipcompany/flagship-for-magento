@@ -8,7 +8,9 @@ use \Flagship\Shipping\GetShipmentsListException;
 
 class HideCreateShippingLabel{
 
-    public function __construct(\Flagship\Shipping\Block\Flagship $flagship, \Flagship\Shipping\Logger\Logger $logger){
+    public function __construct(
+        \Flagship\Shipping\Helper\Flagship $flagship, 
+        \Flagship\Shipping\Logger\Logger $logger){
 
         $this->logger = $logger;
         $this->flagship = $flagship;

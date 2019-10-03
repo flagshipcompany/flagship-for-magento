@@ -5,7 +5,10 @@ class AddBoxes extends \Magento\Framework\View\Element\Template{
 
     protected $flagship;
 
-    public function __construct(\Magento\Framework\View\Element\Template\Context $context, \Magento\Framework\App\ResourceConnection $resource, \Flagship\Shipping\Block\Flagship $flagship){
+    public function __construct(
+        \Magento\Framework\View\Element\Template\Context $context, 
+        \Magento\Framework\App\ResourceConnection $resource, 
+        \Flagship\Shipping\Helper\Flagship $flagship){
         
         parent::__construct($context);
         $this->resource = $resource;

@@ -1,5 +1,6 @@
 <?php
-namespace Flagship\Shipping\Block;
+namespace Flagship\Shipping\Helper;
+
 class Flagship extends \Magento\Framework\View\Element\Template{
     protected $_logger;
     protected $loggingEnabled;

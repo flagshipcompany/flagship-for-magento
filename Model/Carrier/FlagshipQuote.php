@@ -43,7 +43,7 @@ class FlagshipQuote
         \Magento\Framework\App\ResourceConnection $resource,
         \Magento\Backend\Model\Url $url,
         \Flagship\Shipping\Logger\Logger $flagshipLogger,
-        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Helper\Flagship $flagship,
         \Flagship\Shipping\Block\DisplayPacking $packing,
         \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
         \Magento\Store\Model\StoreManager $storeManager,

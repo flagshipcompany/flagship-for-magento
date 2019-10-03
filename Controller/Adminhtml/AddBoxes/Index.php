@@ -11,7 +11,7 @@ class Index extends \Magento\Backend\App\Action{
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
         \Magento\Framework\View\Result\PageFactory $resultPageFactory,
-        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Helper\Flagship $flagship,
         \Flagship\Shipping\Logger\Logger $logger,
         \Flagship\Shipping\Model\AddBoxesFactory $addBoxesFactory
     ) {

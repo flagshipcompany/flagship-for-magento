@@ -8,7 +8,7 @@ class CreatePickup extends \Magento\Framework\View\Element\Template{
 
     public function __construct(
         \Magento\Framework\View\Element\Template\Context $context,
-        \Flagship\Shipping\Block\Flagship $flagship,
+        \Flagship\Shipping\Helper\Flagship $flagship,
         array $data=[]){
             $this->flagship = $flagship;
             parent::__construct($context,$data);
