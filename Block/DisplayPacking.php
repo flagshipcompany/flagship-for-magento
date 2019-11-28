@@ -18,7 +18,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
         \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
         \Magento\Inventory\Model\SourceRepository $sourceRepository,
-        \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository
+        \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository,
+        \Magento\Framework\Message\ManagerInterface $messageManager
     ){
         parent::__construct($context);
         $this->resource = $resource;
@@ -28,6 +29,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->getSourceCodesBySkus = $getSourceCodesBySkus;
         $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
         $this->sourceRepository = $sourceRepository;
+        $this->messageManager = $messageManager;
+
     }
 
     public function getPacking() : ?array {
@@ -136,6 +139,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     }
 
     public function getPackingDetails() : array {
+        $packingContent = [];
         $packings = $this->getPacking();
         if(array_key_exists("error",$packings)){
             return $packings["error"];
