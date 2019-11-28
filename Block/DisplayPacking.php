@@ -28,7 +28,6 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->getSourceCodesBySkus = $getSourceCodesBySkus;
         $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
         $this->sourceRepository = $sourceRepository;
-
     }
 
     public function getPacking() : ?array {
@@ -169,6 +168,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
         } catch( PackingException $e){
             $this->flagship->logError("Order #".$this->getOrder()->getId()." ".$e->getMessage().". Response Code : ".$packingRequest->getResponseCode());
+            return null;
         }
 
     }
@@ -219,7 +219,10 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
     }
 
-    protected function getPackingDetailsArray(\Flagship\Shipping\Collections\PackingCollection $packings,string $sourceCode) : int {
+    protected function getPackingDetailsArray(?\Flagship\Shipping\Collections\PackingCollection $packings,string $sourceCode) : array {
+        if($packings == NULL){
+            return [];
+        }
         foreach ($packings as $packing) {
             $this->packingDetails[] = [
                 "source_code" => $sourceCode,
@@ -230,7 +233,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             ];
         }
 
-        return 0;
+        return $this->packingDetails;
     }
 
     protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item) : ?array {

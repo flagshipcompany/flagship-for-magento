@@ -370,8 +370,8 @@ class Index extends \Magento\Backend\App\Action
         $stateCode = !is_null($source) && !is_null($source->getRegionId()) ? $source->getRegionId() : $store->getConfig('general/store_information/region_id');
         $state = empty($stateCode) ? $stateCode : $this->getStateCode($stateCode);
 
-        $name  = !is_null($source) && !is_null($source->getName()) ? $source->getName() : $store->getConfig('general/store_information/name');
-        $attn =!is_null($source) && !is_null($source->getContactName()) ? $source->getContactName() : $name ;
+        $name  = !is_null($source) && !is_null($source->getName()) ? substr($source->getName(),0,25) : substr($store->getConfig('general/store_information/name'),0,25);
+        $attn =!is_null($source) && !is_null($source->getContactName()) ? substr($source->getContactName(),0,20) : substr($name,0,20);
         $address = !is_null($source) && !is_null($source->getStreet()) ? $source->getStreet() : $store->getConfig('general/store_information/street_line1');
         $suite = is_null($store->getConfig('general/store_information/street_line2')) ? '' : $store->getConfig('general/store_information/street_line2');
         $city = !is_null($source) && !is_null($source->getCity()) ? $source->getCity() : $store->getConfig('general/store_information/city');
