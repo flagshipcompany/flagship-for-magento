@@ -7,6 +7,7 @@
                 <field id="active" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Enabled</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Rates will not be available unless FlagShip is configured with a valid token</comment>
                 </field>
 
                 <field id="delivery_date" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="0">
@@ -37,6 +38,7 @@
                     <label>Allowed Methods</label>
                     <source_model>Flagship\Shipping\Model\Carrier\FlagshipAllowedMethods</source_model>
                     <can_be_empty>1</can_be_empty>
+                    <comment>FlagShip token must be set to select courier values</comment>
                 </field>
             </group>
         </section>

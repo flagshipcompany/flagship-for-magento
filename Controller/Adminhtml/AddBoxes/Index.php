@@ -20,7 +20,7 @@ class Index extends \Magento\Backend\App\Action{
         $this->flagship = $flagship;
         $this->addBoxesFactory = $addBoxesFactory;
         $this->_logger = $logger;
-        $this->loggingEnabled = $this->flagship->getSettings()["log"];
+        $this->loggingEnabled = array_key_exists('log',$this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1 ;
     }
 
     public function execute(){

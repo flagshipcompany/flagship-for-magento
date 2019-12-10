@@ -47,7 +47,7 @@ class Index extends \Magento\Backend\App\Action
         $this->_logger = $logger;
         $this->displayPackings = $displayPackings;
         $this->flagship = $flagship;
-        $this->loggingEnabled = $this->flagship->getSettings()["log"];
+        $this->loggingEnabled = array_key_exists('log',$this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1 ;
         $this->getSalableQuantityDataBySku = $getSalableQuantityDataBySku;
         $this->getSourceCodesBySkus = $getSourceCodesBySkus;
         $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
@@ -82,7 +82,6 @@ class Index extends \Magento\Backend\App\Action
         $ltlEmail = explode(",",$this->scopeConfig->getValue('carriers/flagship/ltl_email'));
 
         if($isLogistics !== FALSE && !is_null($ltlEmail)){
-
             $this->createLogisticsShipment($ltlEmail,$orderItems);
             return $this->_redirect($this->_redirect->getRefererUrl());
         }

@@ -25,7 +25,7 @@ class Index extends \Magento\Backend\App\Action{
          $this->resultPageFactory = $resultPageFactory;
          $this->flagship = $flagship;
          $this->_logger = $logger;
-         $this->loggingEnabled = $this->flagship->getSettings()["log"];
+         $this->loggingEnabled = array_key_exists('log',$this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1 ;
          $this->configFactory = $configFactory;
          $this->config = $config;
     }

@@ -15,12 +15,11 @@ class Delete extends \Magento\Backend\App\Action{
         \Flagship\Shipping\Helper\Flagship $flagship,
         \Flagship\Shipping\Model\AddBoxes $addBoxes
     ) {
-
          parent::__construct($context);
          $this->flagship = $flagship;
          $this->addBoxes = $addBoxes;
          $this->_logger = $logger;
-         $this->loggingEnabled = $this->flagship->getSettings()["log"];
+         $this->loggingEnabled = array_key_exists('log',$this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1 ;
     }
 
     public function execute(){
@@ -35,7 +34,7 @@ class Delete extends \Magento\Backend\App\Action{
         } catch(\Exception $e){
             $this->flagship->logError($e->getMessage());
             $this->messageManager->addErrorMessage($e->getMessage());
-            return; 
+            return;
         }
     }
 }

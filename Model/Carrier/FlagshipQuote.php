@@ -58,7 +58,7 @@ class FlagshipQuote
         $this->url = $url;
         $this->flagshipLogger = $flagshipLogger;
         $this->flagship = $flagship;
-        $this->flagshipLoggingEnabled = $this->flagship->getSettings()["log"];
+        $this->flagshipLoggingEnabled = array_key_exists('log',$this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1 ;
         $this->packing = $packing;
         $this->storeManager = $storeManager;
         $this->getSourceCodesBySkus = $getSourceCodesBySkus;
@@ -66,6 +66,7 @@ class FlagshipQuote
         $this->shipmentCollection = $shipmentCollection;
         $this->customerSession = $customerSession;
         $this->customerAddressCollection = $customerAddressCollection;
+
         parent::__construct(
             $scopeConfig,
             $rateErrorFactory,
@@ -178,6 +179,9 @@ class FlagshipQuote
     public function allowedMethods() : array {
 
         $token = $this->getToken();
+        if(!isset($token)){
+            return [];
+        }
         $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
         try{
             $availableServices = $flagship->availableServicesRequest();
@@ -398,10 +402,18 @@ class FlagshipQuote
     }
 
     protected function getSenderAddress(\Magento\Inventory\Model\Source $source) : array {
-        $from_city = is_null($source->getCity()) ? $this->_scopeConfig->getValue('general/store_information/city',\Magento\Store\Model\ScopeInterface::SCOPE_STORE) : $source->getCity() ;
-        $from_country = is_null($source->getCountryId()) ? $this->_scopeConfig->getValue('general/store_information/country_id',\Magento\Store\Model\ScopeInterface::SCOPE_STORE) : $source->getCountryId();
-        $from_state =  is_null($source->getRegionId()) ? $this->getState($this->_scopeConfig->getValue('general/store_information/region_id',\Magento\Store\Model\ScopeInterface::SCOPE_STORE)) : $this->getState($source->getRegionId());
-        $from_postcode = is_null($source) ? $this->_scopeConfig->getValue('general/store_information/postcode',\Magento\Store\Model\ScopeInterface::SCOPE_STORE) : $source->getPostcode();
+        $from_city = $source->getCity() ;
+        $from_country = $source->getCountryId();
+        $from_state =  $this->getState($source->getRegionId());
+        $from_postcode = $source->getPostcode();
+
+        if($source->getPostcode() == '00000'){
+            $from_city = $this->_scopeConfig->getValue('general/store_information/city',\Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+            $from_country = $this->_scopeConfig->getValue('general/store_information/country_id',\Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+            $from_state = $this->getState($this->_scopeConfig->getValue('general/store_information/region_id',\Magento\Store\Model\ScopeInterface::SCOPE_STORE));
+            $from_postcode = $this->_scopeConfig->getValue('general/store_information/postcode',\Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        }
+
 
         $from = [
             "city"  => $from_city,

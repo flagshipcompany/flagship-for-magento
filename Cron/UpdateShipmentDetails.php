@@ -36,7 +36,7 @@ class UpdateShipmentDetails{
     }
 
     protected function getTrackingStatus(int $flagshipShipmentId) : int {
-            $this->tracking->updateShipmentTrackingData($flagshipShipment);
-            return 0;
+        $this->tracking->updateShipmentTrackingData($flagshipShipment);
+        return 0;
     }
 }

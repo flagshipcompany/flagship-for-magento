@@ -14,14 +14,14 @@ class Flagship extends \Magento\Framework\View\Element\Template{
         $this->_logger = $logger;
         $this->config = $config;
         $this->scopeConfig = $scopeConfig;
-        $this->loggingEnabled = isset($this->getSettings()["log"]) ? $this->getSettings()["log"] : 0 ;
+        $this->loggingEnabled = array_key_exists('log',$this->getSettings()) ? $this->getSettings()["log"] : 1 ;
         if(!defined('SMARTSHIP_WEB_URL')){
             $this->getEnv();
         }
     }
     public function getSettings() : array {
         $collection = $this->config->getCollection();
-        return $this->getSettingsValues($collection->toArray()['items']);
+        return $collection->count() == 0 ? [] : $this->getSettingsValues($collection->toArray()['items']);
     }
     public function getSettingsValues(array $result) : array {
         $settings = [];
