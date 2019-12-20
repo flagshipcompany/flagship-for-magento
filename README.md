@@ -6,7 +6,7 @@ Magento2 module for FlagShip.
 
 @MagentoRoot
 
-## Composer Install
+## Composer Install (Preferred)
 
 ```
 composer require flagshipcompany/flagship-for-magento:^1.0
@@ -20,6 +20,7 @@ bin/magento setup:upgrade
 Download flagship-for-magento.zip
 
 ```
+@MagentoRoot > composer require flagshipcompany/flagship-api-sdk:^1.1
 unzip flagship-for-magento.zip
 cd @MagentoRoot/app/code
 mkdir Flagship
