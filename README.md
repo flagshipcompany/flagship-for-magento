@@ -4,7 +4,7 @@ Magento2 module for FlagShip.
 
 # Installation
 
-@MagentoRoot
+Navigate to your Magento directory and execute the following commands
 
 ## Composer Install (Preferred)
 
