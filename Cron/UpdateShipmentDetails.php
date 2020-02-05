@@ -7,12 +7,14 @@ class UpdateShipmentDetails{
 
     public function __construct(
         \Magento\Sales\Model\Order\Shipment $shipment,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Flagship\Shipping\Plugin\HideCreateShippingLabel $tracking,
         \Flagship\Shipping\Helper\Flagship $flagship
     ){
         $this->shipment = $shipment;
         $this->tracking = $tracking;
         $this->flagship = $flagship;
+        $this->scopeConfig = $scopeConfig;
     }
 
     public function execute(){
@@ -26,8 +28,10 @@ class UpdateShipmentDetails{
 
     protected function isShipmentConfirmed(int $flagshipShipmentId) : int {
         $token = $this->flagship->getSettings()["token"];
+        $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
+
         $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
-        $flagshipShipment = $flagship->getShipmentByIdRequest($flagshipShipmentId)->execute();
+        $flagshipShipment = $flagship->getShipmentByIdRequest($flagshipShipmentId)->setStoreName($storeName)->execute();
 
         if(strcasecmp($flagshipShipment->getStatus(),'Prequoted') != 0){
             $this->getTrackingStatus($flagshipShipmentId);

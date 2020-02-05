@@ -9,11 +9,13 @@ use \Flagship\Shipping\GetShipmentsListException;
 class HideCreateShippingLabel{
 
     public function __construct(
-        \Flagship\Shipping\Helper\Flagship $flagship, 
+        \Flagship\Shipping\Helper\Flagship $flagship,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Flagship\Shipping\Logger\Logger $logger){
 
         $this->logger = $logger;
         $this->flagship = $flagship;
+        $this->scopeConfig = $scopeConfig;
     }
 
     public function afterSetLayout() : int {
@@ -48,8 +50,10 @@ class HideCreateShippingLabel{
     }
 
     public function getFlagshipShipment($id) : \Flagship\Shipping\Objects\Shipment {
+        $storeName = $this->scopeConfig->getValue('general/store_information/name');
+        $storeName = $storeName == null ? '' : $storeName;
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
-        $request = $flagship->getShipmentByIdRequest($id);
+        $request = $flagship->getShipmentByIdRequest($id)->setStoreName($storeName)->setOrderId($this->order->getId());
         $shipment = $request->execute();
         return $shipment;
     }
@@ -96,11 +100,13 @@ class HideCreateShippingLabel{
     }
 
     protected function getFlagshipShipmentByTrackingNumber(string $trackingNumber) : \Flagship\Shipping\Collections\GetShipmentListCollection {
-
+        $storeName = $this->scopeConfig->getValue('general/store_information/name');
+        $storeName = $storeName == null ? '' : $storeName;
+        
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         try{
-            $shipmentList = $flagship->getShipmentListRequest();
+            $shipmentList = $flagship->getShipmentListRequest()->setStoreName($storeName)->setOrderId($this->order->getId());
             $shipment = $shipmentList->addFilter('tracking_number',$trackingNumber)->execute();
             $this->flagship->logInfo("Retrieved shipment list from FlagShip. Response Code : ".$shipmentList->getResponseCode());
             return $shipment;

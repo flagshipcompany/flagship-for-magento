@@ -28,6 +28,7 @@ class Index extends \Magento\Backend\App\Action{
          $this->loggingEnabled = array_key_exists('log',$this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1 ;
          $this->configFactory = $configFactory;
          $this->config = $config;
+         $this->scopeConfig = $scopeConfig;
     }
 
     public function execute()
@@ -112,8 +113,9 @@ class Index extends \Magento\Backend\App\Action{
         }
 
         $flagship = new Flagship($token,$url,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
+        $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
-        $validateTokenRequest = $flagship->validateTokenRequest($token);
+        $validateTokenRequest = $flagship->validateTokenRequest($token)->setStoreName($storeName);
 
         try{
             $validToken = $validateTokenRequest->execute() === 200 ? true : false;

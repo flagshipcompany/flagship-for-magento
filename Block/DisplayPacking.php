@@ -19,6 +19,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
         \Magento\Inventory\Model\SourceRepository $sourceRepository,
         \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Magento\Framework\Message\ManagerInterface $messageManager
     ){
         parent::__construct($context);
@@ -30,12 +31,10 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
         $this->sourceRepository = $sourceRepository;
         $this->messageManager = $messageManager;
-
+        $this->scopeConfig = $scopeConfig;
     }
 
     public function getPacking() : ?array {
-
-        $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         try{
             if(is_null($this->getBoxes())){
@@ -165,7 +164,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         try{
-            $packingRequest = $flagship->packingRequest($payload);
+            $packingRequest = $flagship->packingRequest($payload)->setStoreName('Magento - '.$this->scopeConfig->getValue('general/store_information/name'));
+            
             $packings = $packingRequest->execute();
             $this->flagship->logInfo("Retrieved packings from FlagShip. Response Code : ". $packingRequest->getResponseCode());
             return $packings;

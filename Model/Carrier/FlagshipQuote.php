@@ -130,27 +130,6 @@ class FlagshipQuote
         return $result;
     }
 
-    protected function getTrackingUrl(string $courierName, string $trackingNumber){
-        switch($courierName){
-            case 'ups':
-                $url = 'http://wwwapps.ups.com/WebTracking/track?HTMLVersion=5.0&loc=en_CA&Requester=UPSHome&trackNums='.$trackingNumber.'&track.x=Track';
-                break;
-            case 'dhl':
-                $url = 'http://www.dhl.com/en/express/tracking.html?AWB='.$trackingNumber.'&brand=DHL';
-                break;
-            case 'fedex':
-                $url = 'http://www.fedex.com/Tracking?ascend_header=1&clienttype=dotcomreg&track=y&cntry_code=ca_english&language=english&tracknumbers='.$trackingNumber.'&action=1&language=null&cntry_code=ca_english';
-                break;
-            case 'purolator':
-                $url = 'https://eshiponline.purolator.com/ShipOnline/Public/Track/TrackingDetails.aspx?pup=Y&pin='.$trackingNumber.'&lang=E';
-                break;
-            case 'canpar':
-                $url = 'https://www.canpar.com/en/track/TrackingAction.do?reference='.$trackingNumber.'&locale=en';
-                break;
-        }
-        return $url;
-    }
-
     public function proccessAdditionalValidation(\Magento\Framework\DataObject $request) : bool {
         return $this->processAdditionalValidation($request);
     }
@@ -161,12 +140,16 @@ class FlagshipQuote
     
     public function allowedMethods() : array {
         $token = $this->getToken();
+        
         if(!isset($token)){
             return [];
         }
         $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
+        $storeName = $this->_scopeConfig->getValue('general/store_information/name');
+        $storeName = $storeName == null ? '' : $storeName;
+
         try{
-            $availableServices = $flagship->availableServicesRequest();
+            $availableServices = $flagship->availableServicesRequest()->setStoreName($storeName);
             $services = $availableServices->execute();
             $this->flagship->logInfo("Retrieved available services from FlagShip. Response Code : ".$availableServices->getResponseCode());
             return $this->getAllowedMethodsArray($services);
@@ -190,9 +173,11 @@ class FlagshipQuote
         $cartItems = $this->cart->getQuote()->getAllVisibleItems();
         $productSkus = [];
         $sku = [];
+        $productSourceCodes = [];
         foreach ($cartItems as $item) {
             $productSku = $item->getProduct()->getSku();
-            $sku = count($this->productOption->getProductOptionCollection($item->getProduct())) == 0 ? $productSku : (strpos($productSku,"-") == FALSE ? $productSku : intval(substr($productSku,0,strpos($productSku, "-"))));
+
+            $sku = count($this->productOption->getProductOptionCollection($item->getProduct())) == 0 ? $productSku : (strpos($productSku,"-") == FALSE ? $productSku : intval(substr($productSku,0,strpos($productSku, "-"))));            
             $productSkus[] = $sku;
             $productQtyPerSource = $this->getQuantityInformationPerSource->execute($sku);
 
@@ -202,12 +187,13 @@ class FlagshipQuote
                 }
             }
             $orderItems = $this->getOrderItems($sku,$productSourceCodes,$item,$orderItems);
-            
         }
 
         $ltlFlagArray = [];
+       
         foreach ($orderItems as $key => $orderItem) { //key is sku - source code
             $payload = $this->getPayload($request,$orderItem["source"],$orderItem["items"]);
+        
             $ltlFlagArray[] = $this->checkPayloadForLtl($payload);
             $sku = substr($key, 0,strpos($key, "-"));
             $sourceCode = substr($key, strpos($key, "-")+1);
@@ -237,7 +223,7 @@ class FlagshipQuote
         return $this->getRatesResult($rates);
     }
 
-    protected function getOrderItems($sku,$productSourceCodes,$item,$orderItems){
+    protected function getOrderItems(string $sku,array $productSourceCodes,\Magento\Quote\Model\Quote\Item $item,array $orderItems) : array {
         foreach ($productSourceCodes as $productSourceCode) {
             $orderItems[$sku.'-'.$productSourceCode]['source'] = $this->sourceRepository->get($productSourceCode);
             $orderItems[$sku.'-'.$productSourceCode]['items'][] = $item;
@@ -533,11 +519,35 @@ class FlagshipQuote
         }
         return $returnItems;
     }
+
+    protected function getTrackingUrl(string $courierName, string $trackingNumber){
+        switch($courierName){
+            case 'ups':
+                $url = 'http://wwwapps.ups.com/WebTracking/track?HTMLVersion=5.0&loc=en_CA&Requester=UPSHome&trackNums='.$trackingNumber.'&track.x=Track';
+                break;
+            case 'dhl':
+                $url = 'http://www.dhl.com/en/express/tracking.html?AWB='.$trackingNumber.'&brand=DHL';
+                break;
+            case 'fedex':
+                $url = 'http://www.fedex.com/Tracking?ascend_header=1&clienttype=dotcomreg&track=y&cntry_code=ca_english&language=english&tracknumbers='.$trackingNumber.'&action=1&language=null&cntry_code=ca_english';
+                break;
+            case 'purolator':
+                $url = 'https://eshiponline.purolator.com/ShipOnline/Public/Track/TrackingDetails.aspx?pup=Y&pin='.$trackingNumber.'&lang=E';
+                break;
+            case 'canpar':
+                $url = 'https://www.canpar.com/en/track/TrackingAction.do?reference='.$trackingNumber.'&locale=en';
+                break;
+        }
+        return $url;
+    }
     
     protected function getQuotes(array $payload) : \Flagship\Shipping\Collections\RatesCollection {
         $token = $this->getToken();
+        $storeName = $this->_scopeConfig->getValue('general/store_information/name');
+        $storeName = $storeName == null ? '' : $storeName;
+
         $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
-        $quoteRequest = $flagship->createQuoteRequest($payload);
+        $quoteRequest = $flagship->createQuoteRequest($payload)->setStoreName($storeName);
         try{
             $quotes = $quoteRequest->execute();
             $this->flagship->logInfo("Retrieved quotes from FlagShip. Response Code : ".$quoteRequest->getResponseCode());
@@ -550,8 +560,11 @@ class FlagshipQuote
     
     protected function getShipmentFromFlagship(string $trackingNumber) : \Flagship\Shipping\Objects\Shipment {
         $token = $this->getToken();
+        $storeName = $this->_scopeConfig->getValue('general/store_information/name');
+        $storeName = $storeName == null ? '' : $storeName;
+
         $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
-        $shipmentsList = $flagship->getShipmentListRequest();
+        $shipmentsList = $flagship->getShipmentListRequest()->setStoreName($storeName);
         try{
             $shipments = $shipmentsList->execute();
             $shipment = $shipments->getByTrackingNumber($trackingNumber);

@@ -331,7 +331,9 @@ class Index extends \Magento\Backend\App\Action
 
     protected function getUpdatePayload(Flagship $flagship,int $shipmentId) : array {
         $store = $this->getStore();
-        $shipment = $flagship->getShipmentByIdRequest($shipmentId)->execute();
+        $orderId = $this->getOrder()->getId();
+        $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
+        $shipment = $flagship->getShipmentByIdRequest($shipmentId)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view',['order_id' => $orderId]))->execute();
 
         $from = (array)$shipment->shipment->from;
         unset($from['phone_ext']);
@@ -396,8 +398,10 @@ class Index extends \Magento\Backend\App\Action
 
     protected function updateShipment(Flagship $flagship, array $payload,int $shipmentId) : \Magento\Framework\Message\Manager {
         try{
+            $orderId = $this->getOrder()->getId();
+            $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
-            $update = $flagship->editShipmentRequest($payload,$shipmentId);
+            $update = $flagship->editShipmentRequest($payload,$shipmentId)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view',['order_id' => $orderId]));
             $response = $update->execute();
 
             $id = $response->getId();
@@ -415,8 +419,10 @@ class Index extends \Magento\Backend\App\Action
 
     protected function prepareShipment(Flagship $flagship, array $payload, array $orderItem) : \Magento\Framework\Message\Manager {
         try{
+            $orderId = $this->getOrder()->getId();
+            $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
-            $request = $flagship->prepareShipmentRequest($payload);
+            $request = $flagship->prepareShipmentRequest($payload)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view',['order_id' => $orderId]));
             $response = $request->execute();
             $id = $response->shipment->id;
             $this->setFlagshipShipmentId($id,$orderItem);
