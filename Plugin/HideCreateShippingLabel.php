@@ -35,7 +35,7 @@ class HideCreateShippingLabel{
             return;
         }
 
-        $shipment = $this->getFlagshipShipment($flagshipId);
+        $shipment = $this->getFlagshipShipment($flagshipId,$this->order);
         $orderId = $this->order->getId();
 
         if($this->isShipmentConfirmed($shipment,$orderId)){
@@ -49,11 +49,11 @@ class HideCreateShippingLabel{
         return;
     }
 
-    public function getFlagshipShipment($id) : \Flagship\Shipping\Objects\Shipment {
+    public function getFlagshipShipment($id, $order) : \Flagship\Shipping\Objects\Shipment {
         $storeName = $this->scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
-        $request = $flagship->getShipmentByIdRequest($id)->setStoreName($storeName)->setOrderId($this->order->getId());
+        $request = $flagship->getShipmentByIdRequest($id)->setStoreName($storeName)->setOrderId($order->getId());
         $shipment = $request->execute();
         return $shipment;
     }
@@ -102,7 +102,7 @@ class HideCreateShippingLabel{
     protected function getFlagshipShipmentByTrackingNumber(string $trackingNumber) : \Flagship\Shipping\Collections\GetShipmentListCollection {
         $storeName = $this->scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
-        
+
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         try{

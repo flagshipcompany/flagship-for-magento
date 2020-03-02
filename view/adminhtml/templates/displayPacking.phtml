@@ -17,7 +17,7 @@
                 return;
             }
 
-            $packings = $block->getPacking();
+            $packings = $block->getPacking()['packingDetails'];
             if(!is_null($packings)){
                 $packingDetails = $block->getPackingDetails();
             }
@@ -27,6 +27,14 @@
                 $packing .= normalizePackingDetail($packingDetail['detail']);
             }
 
+            $shipAsIs = $block->getPacking()['shipAsIs'];
+            $detail = '';
+            if(count($shipAsIs) != 0){
+                $packing .= '<br>Ship following products <b>in product packaging </b>';
+                foreach ($shipAsIs as $value) {
+                    $packing .= normalizeShipAsIs($value,$detail);
+                }
+            }
             echo $packing;
 
             function normalizePackingDetail($packingDetail){
@@ -43,6 +51,11 @@
                 foreach ($itemCount as $key => $value) {
                     $detail .= '<span style="margin-left:5%;"><b>'.$value.'</b> x <b>'.$key.'</b><br>';
                 }
+                return $detail;
+            }
+
+            function normalizeShipAsIs($shipDetail,$detail){
+                $detail .= "<br>".$shipDetail."<br>";
                 return $detail;
             }
         ?>

@@ -43,7 +43,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             $order = $this->getOrder();
 
             $this->packingDetails = [];
-
+            $this->shipAsIsProducts = [];
             $orderItems = $this->getSourceCodesForOrderItems();
 
             foreach ($orderItems as $orderItem) {
@@ -54,7 +54,10 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
                 $this->getPackingDetailsArray($packings,$sourceCode);
             }
 
-            return $this->packingDetails;
+            return [
+                "packingDetails" => $this->packingDetails,
+                "shipAsIs" => $this->shipAsIsProducts
+            ];
 
         } catch( \Exception $e){
             $packingDetails = [
@@ -97,7 +100,6 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
     public function getItemsForPrepareShipment() : array {
 
-
         $orderItems = $this->getSourceCodesForOrderItems();
 
         $this->items = [];
@@ -113,9 +115,14 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
         $this->items = [];
         foreach ($items as $item) {
-            $this->forComplexItem($item);
+            $bogusVar = $item->getProduct()->getDataByKey('ship_as_is') == 1 ? $this->addToShipAsIsProducts($item) : $this->forComplexItem($item);
         }
+
         return $this->items;
+    }
+
+    protected function addToShipAsIsProducts($item){
+        $this->shipAsIsProducts[] = $item->getProduct()->getName();
     }
 
     public function isPackingEnabled() : int {
@@ -139,7 +146,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
     public function getPackingDetails() : array {
         $packingContent = [];
-        $packings = $this->getPacking();
+        $packings = $this->getPacking()['packingDetails'];
         if(array_key_exists("error",$packings)){
             return $packings["error"];
         }
@@ -165,7 +172,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
         try{
             $packingRequest = $flagship->packingRequest($payload)->setStoreName('Magento - '.$this->scopeConfig->getValue('general/store_information/name'));
-            
+
             $packings = $packingRequest->execute();
             $this->flagship->logInfo("Retrieved packings from FlagShip. Response Code : ". $packingRequest->getResponseCode());
             return $packings;
@@ -183,23 +190,23 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
      public function getItemsArray($item) : array
      {
-         $length = is_null($item->getProduct()->getDataByKey('length')) ? (is_null($item->getProduct()->getDataByKey('ts_dimensions_length')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_length')) ) : intval($item->getProduct()->getDataByKey('length'));
+        $length = is_null($item->getProduct()->getDataByKey('length')) ? (is_null($item->getProduct()->getDataByKey('ts_dimensions_length')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_length')) ) : intval($item->getProduct()->getDataByKey('length'));
 
-         $width = is_null($item->getProduct()->getDataByKey('width')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_width')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_width')) : intval($item->getProduct()->getDataByKey('width'));
+        $width = is_null($item->getProduct()->getDataByKey('width')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_width')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_width')) : intval($item->getProduct()->getDataByKey('width'));
 
-         $height = is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_height')) : intval($item->getProduct()->getDataByKey('height'));
+        $height = is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_height')) : intval($item->getProduct()->getDataByKey('height'));
 
-         return [
-                 "length" => $length <= 0 ? 1 : $length,
+        return [
+                "length" => $length <= 0 ? 1 : $length,
 
-                 "width" => $width <= 0 ? 1 : $width,
+                "width" => $width <= 0 ? 1 : $width,
 
-                 "height" => $height <= 0 ? 1 : $height,
+                "height" => $height <= 0 ? 1 : $height,
 
-                 "weight" => is_null($item->getProduct()->getWeight()) || $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight(),
+                "weight" => is_null($item->getProduct()->getWeight()) || $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight(),
 
-                 "description" => strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"].' - '.$item->getProductOptions()["simple_name"] : $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
-             ];
+                "description" => strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"].' - '.$item->getProductOptions()["simple_name"] : $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
+            ];
      }
 
 

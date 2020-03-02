@@ -80,6 +80,7 @@ class Index extends \Magento\Backend\App\Action
         $shippingMethod = $this->getOrder()->getShippingMethod();
         $isLogistics = stripos($shippingMethod,'logistics');
         $ltlEmail = explode(",",$this->scopeConfig->getValue('carriers/flagship/ltl_email'));
+        $shipAsIsProducts = [];
 
         if($isLogistics !== FALSE && !is_null($ltlEmail)){
             $this->createLogisticsShipment($ltlEmail,$orderItems);
@@ -111,13 +112,25 @@ class Index extends \Magento\Backend\App\Action
         $items = $this->getOrder()->getAllItems();
         $skus = null;
         $orderItems = [];
+
         foreach ($items as $item) {
             $sku = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
             $sourceCode = $this->getSourceCodesBySkus->execute([$sku])[0];
             $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
             $orderItems[$sourceCode]['items'][] = $item;
+
         }
         return $orderItems;
+    }
+
+    protected function getShipAsIsProducts($orderItems){
+        $shipAsIsProducts = [];
+        foreach ($orderItems['items'] as $item) {
+            if($item->getProduct()->getDataByKey('ship_as_is') == 1){
+                $shipAsIsProducts[] = $item->getProduct();
+            }
+        }
+        return $shipAsIsProducts;
     }
 
     public function getPayload(array $orderItem) : array {
@@ -127,7 +140,24 @@ class Index extends \Magento\Backend\App\Action
         $from = $this->getSender($source,$store);
         $to = $this->getReceiver($store);
 
+        $this->addShipAsIsPackages($orderItem['items']);
         $packages = $this->getPackages($orderItem);
+        foreach ($this->shipAsIsProducts as $value) {
+            $product = $value->getProduct();
+            $length = $product->getDataByKey('ts_dimensions_length') == NULL ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
+            $width = $product->getDataByKey('ts_dimensions_width') == NULL ? ceil($product->getDataByKey('width')) : ceil($product->getDataByKey('ts_dimensions_width'));
+            $height = $product->getDataByKey('ts_dimensions_height') == NULL ? ceil($product->getDataByKey('height')) : ceil($product->getDataByKey('ts_dimensions_height'));
+
+            $packages['items'][] = [
+                'description' => $product->getName(),
+                'length' => $length,
+                'width' => $width,
+                'height' => $height,
+                'weight' => $product->getWeight()
+            ];
+        }
+
+
         $options = $this->getOptions($store);
 
         $payment = $this->getPayment();
@@ -143,6 +173,15 @@ class Index extends \Magento\Backend\App\Action
         return $payload;
     }
 
+    protected function addShipAsIsPackages($orderItems){
+        foreach ($orderItems as $orderItem) {
+            if($orderItem->getProduct()->getDataByKey('ship_as_is') == 1){
+                $this->shipAsIsProducts[] = $orderItem;
+                unset($orderItem);
+            }
+        }
+    }
+
     public function getPackages(array $orderItem) : array {
         $items = $orderItem['items'];
         $packageItems = [];
@@ -156,7 +195,7 @@ class Index extends \Magento\Backend\App\Action
           'items' => $packageItems
         ];
         if($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes($orderItem['source']->getSourceCode()))){
-            $packages['items'] = $this->getPayloadItems($orderItem['source']->getSourceCode());
+            $packages['items'] = $this->getPayloadItems($orderItem);
         }
 
         return $packages;
@@ -317,11 +356,15 @@ class Index extends \Magento\Backend\App\Action
 
     protected function getPackageItems(\Magento\Sales\Model\Order\Item $item,array $packageItems) : array {
         $qty = $item->getQtyOrdered();
+        $length = $item->getProduct()->getDataByKey('ts_dimensions_length') == NULL ? intval($item->getProduct()->getDataByKey('length')) : intval($item->getProduct()->getDataByKey('ts_dimensions_length'));
+        $width = $item->getProduct()->getDataByKey('ts_dimensions_width') == NULL ? intval($item->getProduct()->getDataByKey('width')) : intval($item->getProduct()->getDataByKey('ts_dimensions_width'));
+        $height = $item->getProduct()->getDataByKey('ts_dimensions_height') == NULL ? intval($item->getProduct()->getDataByKey('height')) : intval($item->getProduct()->getDataByKey('ts_dimensions_height'));
+
         for($i=0; $i<$qty;$i++){
             $packageItems[] = [
-                'length' => intval($item->getProduct()->getDataByKey('ts_dimensions_length')),
-                'width' => intval($item->getProduct()->getDataByKey('ts_dimensions_width')),
-                'height'=> intval($item->getProduct()->getDataByKey('ts_dimensions_height')),
+                'length' => $length,
+                'width' => $width,
+                'height'=> $height,
                 'weight' => $item->getProduct()->getWeight(),
                 'description' => $item->getProduct()->getName()
             ];
@@ -510,7 +553,7 @@ class Index extends \Magento\Backend\App\Action
 
     protected function getPackingBoxes(string $sourceCode) : ?array {
 
-        $packings = $this->getPackings();
+        $packings = $this->getPackings()['packingDetails'];
 
         $boxes = [];
         if(is_null($packings)){
@@ -576,10 +619,11 @@ class Index extends \Magento\Backend\App\Action
         return $this->displayPackings->getItemsForPrepareShipment();
     }
 
-    protected function getPayloadItems(string $sourceCode) : array {
+    protected function getPayloadItems(array $orderItem) : array {
 
-        $items = $this->getPackingBoxes( $sourceCode );
         $payloadItems = [];
+        $sourceCode = $orderItem['source']->getSourceCode();
+        $items = $this->getPackingBoxes( $sourceCode );
 
         foreach ($items as $item) {
 

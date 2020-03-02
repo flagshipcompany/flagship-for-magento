@@ -49,7 +49,7 @@ class UpdateTrackingDetails{
         if(is_null($flagshipId)){
             return NULL;
         }
-        $flagshipShipment = $this->tracking->getFlagshipShipment($flagshipId);
+        $flagshipShipment = $this->tracking->getFlagshipShipment($flagshipId,$shipment->getOrder());
         $this->updateTrackingForConfirmedShipment($flagshipShipment,$shipment);
     }
 
