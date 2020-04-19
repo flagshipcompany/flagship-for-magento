@@ -174,6 +174,8 @@ class FlagshipQuote
         $productSkus = [];
         $sku = [];
         $productSourceCodes = [];
+        $quotes = [];
+
         foreach ($cartItems as $item) {
             $productSku = $item->getProduct()->getSku();
 
@@ -193,7 +195,8 @@ class FlagshipQuote
        
         foreach ($orderItems as $key => $orderItem) { //key is sku - source code
             $payload = $this->getPayload($request,$orderItem["source"],$orderItem["items"]);
-        
+            $this->flagship->logInfo("Quotes payload: ". json_encode($payload));
+            
             $ltlFlagArray[] = $this->checkPayloadForLtl($payload);
             $sku = substr($key, 0,strpos($key, "-"));
             $sourceCode = substr($key, strpos($key, "-")+1);
