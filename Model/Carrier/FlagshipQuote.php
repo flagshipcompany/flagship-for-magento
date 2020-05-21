@@ -48,7 +48,8 @@ class FlagshipQuote
         \Magento\Customer\Model\Session $customerSession,
         \Magento\Customer\Model\ResourceModel\Address\Collection $customerAddressCollection,
         \Magento\Catalog\Model\Product\Option $productOption,
-        \Magento\InventoryConfigurableProductAdminUi\Model\GetQuantityInformationPerSource $getQuantityInformationPerSource
+        \Magento\InventoryConfigurableProductAdminUi\Model\GetQuantityInformationPerSource $getQuantityInformationPerSource,
+       \Magento\Catalog\Model\ProductRepository $productRepository
     ) {
         $this->request = $request;
         $this->cart = $cart;
@@ -66,6 +67,7 @@ class FlagshipQuote
         $this->customerAddressCollection = $customerAddressCollection;
         $this->productOption = $productOption;
         $this->getQuantityInformationPerSource = $getQuantityInformationPerSource;
+        $this->productRepository = $productRepository;
 
         parent::__construct(
             $scopeConfig,
@@ -133,14 +135,14 @@ class FlagshipQuote
     public function proccessAdditionalValidation(\Magento\Framework\DataObject $request) : bool {
         return $this->processAdditionalValidation($request);
     }
-    
+
     public function processAdditionalValidation(\Magento\Framework\DataObject $request) : bool {
         return true;
     }
-    
+
     public function allowedMethods() : array {
         $token = $this->getToken();
-        
+
         if(!isset($token)){
             return [];
         }
@@ -157,7 +159,7 @@ class FlagshipQuote
             $this->flagship->logError($e->getMessage());
         }
     }
-    
+
     public function getAllowedMethods() : array {
         $allowed = explode(',', $this->getConfigData('allowed_methods'));
         $methods = [];
@@ -166,57 +168,43 @@ class FlagshipQuote
         }
         return $methods;
     }
-    
+
     public function collectRates(RateRequest $request) : \Magento\Shipping\Model\Rate\Result {
 
         $orderItems = [];
         $cartItems = $this->cart->getQuote()->getAllVisibleItems();
         $productSkus = [];
         $sku = [];
-        $productSourceCodes = [];
         $quotes = [];
 
         foreach ($cartItems as $item) {
+            $sourceCodes = [];
             $productSku = $item->getProduct()->getSku();
 
-            $sku = count($this->productOption->getProductOptionCollection($item->getProduct())) == 0 ? $productSku : (strpos($productSku,"-") == FALSE ? $productSku : intval(substr($productSku,0,strpos($productSku, "-"))));            
-            $productSkus[] = $sku;
+            $sku = count($this->productOption->getProductOptionCollection($item->getProduct())) == 0 ? $productSku : (strpos($productSku,"-") == FALSE ? $productSku : intval(substr($productSku,0,strpos($productSku, "-"))));
+
             $productQtyPerSource = $this->getQuantityInformationPerSource->execute($sku);
 
-            foreach ($productQtyPerSource as $value) {
-                if( $value['status'] == 1 && $value['quantity_per_source'] > 1){
-                    $productSourceCodes[] = $value['source_code'];
-                }
-            }
-            $orderItems = $this->getOrderItems($sku,$productSourceCodes,$item,$orderItems);
+            $sourceCodes = $this->getSourceCodesForCartItems($productQtyPerSource,$sourceCodes,$item);
+            $sourceCode = $this->getOptimumSource($sourceCodes,$request,$item);
+            $orderItems[$sourceCode]["source"] = $this->sourceRepository->get($sourceCode);
+            $orderItems[$sourceCode]["items"][] = $item;
         }
 
         $ltlFlagArray = [];
-       
-        foreach ($orderItems as $key => $orderItem) { //key is sku - source code
+
+        foreach ($orderItems as $orderItem) { //key is sku - source code
             $payload = $this->getPayload($request,$orderItem["source"],$orderItem["items"]);
             $this->flagship->logInfo("Quotes payload: ". json_encode($payload));
-            
+            $sourceCode = $orderItem["source"]->getSourceCode();
             $ltlFlagArray[] = $this->checkPayloadForLtl($payload);
-            $sku = substr($key, 0,strpos($key, "-"));
-            $sourceCode = substr($key, strpos($key, "-")+1);
-            $quotes[$sku][$sourceCode] = $this->getQuotes($payload);
-        }
-
-        $finalQuotes = [];
-        foreach ($quotes as $quote) {
-            //source selection
-            $cheapest = 99999;
-            foreach ($quote as $value) {
-                $finalQuote = $value->getCheapest()->getTotal() <= $cheapest ? $value : $finalQuote;
-            }
-            $finalQuotes[] = $finalQuote;
+            $quotes[$sourceCode] = $this->getQuotes($payload);
         }
 
         $rates = [];
-        
-        foreach ($finalQuotes as $finalQuote) {
-            $rates = $this->getRates($finalQuote,$rates);
+
+        foreach ($quotes as $quote) {
+            $rates = $this->getRates($quote,$rates);
         }
         $ltlFlag = in_array(1,$ltlFlagArray);
         if($ltlFlag){
@@ -226,13 +214,81 @@ class FlagshipQuote
         return $this->getRatesResult($rates);
     }
 
-    protected function getOrderItems(string $sku,array $productSourceCodes,\Magento\Quote\Model\Quote\Item $item,array $orderItems) : array {
-        foreach ($productSourceCodes as $productSourceCode) {
-            $orderItems[$sku.'-'.$productSourceCode]['source'] = $this->sourceRepository->get($productSourceCode);
-            $orderItems[$sku.'-'.$productSourceCode]['items'][] = $item;
+    public function getOptimumSource(array $sourceCodes,$request=null, $item, $destinationAddress = null){ //\ Magento\Quote\Model\Quote\Item
+
+        $sourceCode = $sourceCodes[0];
+        $quotes = [];
+        if(count($sourceCodes) > 1){
+            $quotes = $this->getQuotesForAllSources($sourceCodes,$item,$request,$destinationAddress);
+            $sourceCode = $this->findCheapestSource($quotes);
         }
-        return $orderItems;
+
+        return $sourceCode;
     }
+
+    protected function getQuotesForAllSources(array $sourceCodes, $item,$request = null,$destinationAddress = null){
+
+        foreach ($sourceCodes as $value) {
+            $source = $this->sourceRepository->get($value);
+            $payload = $this->getPayload($request,$source,[$item],$destinationAddress);
+            $quotes[$item->getSku()][$value] = $this->getQuotes($payload);
+        }
+        return $quotes;
+    }
+
+    protected function getSourceCodesForCartItems(array $productQtyPerSource,array $sourceCodes, $item){
+        foreach ($productQtyPerSource as $value) {
+            $sourceCodes = $this->getSourceCodesForItem($value,$item,$sourceCodes);
+        }
+        if(count($sourceCodes) < 1){
+            $sourceCodes = $this->getSourceCodesBySkus->execute([$sku]);
+        }
+        return $sourceCodes;
+    }
+
+    protected function getSourceCodesForItem(array $value, $item,array $sourceCodes){
+        if( $value['status'] == 1 && $value['quantity_per_source'] > $item->getQty()) {
+            $sourceCodes[] = $value['source_code'];
+        }
+        return $sourceCodes;
+    }
+
+    protected function findCheapestSource(array $quotes){
+        $finalQuotes = [];
+        $sourceCode = '';;
+        foreach ($quotes as $quote) {
+            //cheapest source selection
+            $cheapest = 99999.99;
+
+            $cheapestQuote = $this->getCheapestQuote($quote,$cheapest);
+            $finalQuotes[] = $cheapestQuote['quote'];
+            $sourceCode = $cheapestQuote['sourceCode'];
+        }
+        return $sourceCode;
+    }
+
+    protected function getCheapestQuote(array $quote,float $cheapest){
+
+        foreach ($quote as $key => $value) { //key is source
+            $cheapestArray = $this->getFinalCheapestQuote($key,$value,$cheapest);
+            $cheapest = array_key_exists('cheapestTotal', $cheapestArray) ? $cheapestArray['cheapestTotal'] : 99999.99;
+        }
+        return $cheapestArray;
+    }
+
+    protected function getFinalCheapestQuote(string $key,\Flagship\Shipping\Collections\RatesCollection $value,float $cheapest){
+        $cheapestArray = [];
+        if($value->getCheapest()->getTotal() <= $cheapest){
+            $cheapest = $value->getCheapest()->getTotal();
+            $cheapestArray = [
+                'cheapestTotal' => $cheapest,
+                'quote' => $value,
+                'sourceCode' => $key
+            ];
+        }
+        return $cheapestArray;
+    }
+
 
     protected function rateForLtl(int $ltlFlag) : \Magento\Shipping\Model\Rate\Result {
         $result = $this->_rateFactory->create();
@@ -248,7 +304,7 @@ class FlagshipQuote
         $this->flagship->logInfo('Prepared ltl method');
         return $result->append($method);
     }
-    
+
     protected function checkPayloadForLtl(array $payload) : int {
         $items = $payload["packages"]["items"];
         $totalBase = 0;
@@ -260,7 +316,7 @@ class FlagshipQuote
         }
         return 0;
     }
-    
+
     protected function getRates(\Flagship\Shipping\Collections\RatesCollection $quotes, array $rates) : array {
         foreach ($quotes as $quote) {
             $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['total'][] = $quote->getTotal();
@@ -281,13 +337,13 @@ class FlagshipQuote
         }
         return $rates;
     }
-    
+
     protected function getRatesArray(array $payload,array $rates) : array{
         $quotes = $this->getQuotes($payload);
         $rates = $this->getRates($quotes,$rates);
         return $rates;
     }
-    
+
     protected function getRatesResult(array $rates) : \Magento\Shipping\Model\Rate\Result {
         $result = $this->_rateFactory->create();
         try{
@@ -306,7 +362,7 @@ class FlagshipQuote
             return $result;
         }
     }
-    
+
     protected function prepareDistributionMethod() : \Magento\Quote\Model\Quote\Address\RateResult\Method {
         $method = $this->_rateMethodFactory->create();
         $carrier = $this->customerSession->getDistribution() == 'on' ? self::SHIPPING_CODE : 'distribution' ;
@@ -330,7 +386,7 @@ class FlagshipQuote
         }
         return $methods;
     }
-    
+
     protected function getOrderId(string $shipmentId) : ?string {
         $shipments = $this->shipmentCollection->create()->addFieldToFilter('flagship_shipment_id',$shipmentId);
         foreach ($shipments as $value) {
@@ -339,7 +395,7 @@ class FlagshipQuote
         $orderId = $shipment->getOrder()->getId();
         return $orderId;
     }
-    
+
     protected function prepareShippingMethods(array $rate) : \Magento\Quote\Model\Quote\Address\RateResult\Method {
         $method = $this->_rateMethodFactory->create();
         $method->setCarrier($rate['details']['carrier']);
@@ -366,7 +422,7 @@ class FlagshipQuote
         $this->flagship->logInfo('Prepared rate for '. $methodTitle);
         return $method;
     }
-    
+
     protected function getToken() : ?string {
         try{
             $token = isset($this->flagship->getSettings()["token"]) ? $this->flagship->getSettings()["token"] : NULL ;
@@ -375,7 +431,7 @@ class FlagshipQuote
             $this->flagship->logError($e->getMessage());
         }
     }
-    
+
     protected function getSenderAddress(\Magento\Inventory\Model\Source $source) : array {
         $from_city = $source->getCity() ;
         $from_country = $source->getCountryId();
@@ -396,8 +452,20 @@ class FlagshipQuote
         ];
         return $from;
     }
-    
-    protected function getReceiverAddress(RateRequest $request) : array {
+
+    protected function getReceiverAddress(?RateRequest $request, $destinationAddress = null) : array {
+        if($request == NULL && $destinationAddress != NULL){
+            $to = [
+                "city" => $destinationAddress['city'],
+                "country"=> $destinationAddress['country'],
+                "state"=> $destinationAddress['state'],
+                "postal_code"=> $destinationAddress['postal_code'],
+                "is_commercial"=>false
+            ];
+            $to = $this->setResidentialFlag($to);
+            return $to;
+        }
+
         $toCity = empty($request->getDestCity()) ? 'Toronto' : $request->getDestCity();
         $to = [
             "city" => $toCity,
@@ -409,7 +477,7 @@ class FlagshipQuote
         $to = $this->setResidentialFlag($to);
         return $to;
     }
-    
+
     protected function setResidentialFlag(array $to) : array {
         $residentialFlag = $this->getConfigData('force_residential');
         if(!$residentialFlag){
@@ -417,19 +485,22 @@ class FlagshipQuote
         }
         return $to;
     }
-    
-    protected function getPayload(RateRequest $request = null,\Magento\Inventory\Model\Source $source,array $items) : array {
+
+    protected function getPayload(?RateRequest $request = null,\Magento\Inventory\Model\Source $source,array $items, $destinationAddress = null) : array {
+
         $insuranceFlag  = $this->getConfigData('insuranceflag');
         $from = $this->getSenderAddress($source);
-        $to = $this->getReceiverAddress($request);
+        $to = $this->getReceiverAddress($request, $destinationAddress);
+
         $packages = [
-                "items" => $this->getItemsArray($items),
-                "units" => $this->getUnits(),
-                "type" => "package",
-                "content" => "goods"
+            "items" => $this->getItemsArray($items),
+            "units" => $this->getUnits(),
+            "type" => "package",
+            "content" => "goods"
         ];
+
         $payment = [
-                "payer"=> "F"
+            "payer"=> "F"
         ];
         $options = [
             "address_correction" => true
@@ -441,6 +512,8 @@ class FlagshipQuote
                 "description"   => "Insurance"
             ];
         }
+        $packages = $this->addShipAsIsItemsToPayload($items,$packages);
+
         $payload = [
             "from"  => $from,
             "to"    => $to,
@@ -448,14 +521,42 @@ class FlagshipQuote
             "payment"   =>  $payment,
             "options"   => $options
         ];
+
         return $payload;
     }
-    
+
+    protected function addShipAsIsItemsToPayload(array $items, array $packages){
+
+        // $shipAsIsArray = [];
+        foreach ($items as $item) {
+            $sku = $item->getSku();
+            $product = $this->productRepository->get($sku);
+
+            if($product->getDataByKey('ship_as_is') == 1){
+
+                $length = $product->getDataByKey('ts_dimensions_length') == NULL ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
+                $width = $product->getDataByKey('ts_dimensions_width') == NULL ? ceil($product->getDataByKey('width')) : ceil($product->getDataByKey('ts_dimensions_width'));
+                $height = $product->getDataByKey('ts_dimensions_height') == NULL ? ceil($product->getDataByKey('height')) : ceil($product->getDataByKey('ts_dimensions_height'));
+
+                $packages['items'][] = [
+                    'length' => $length,
+                    'width' => $width,
+                    'height' => $height,
+                    'weight' => $product->getWeight(),
+                    'description' => $product->getName()
+                ];
+            }
+        }
+
+        return $packages;
+    }
+
+
     protected function getInsuranceAmount() : float {
         $total = $this->cart->getQuote()->getSubtotal() > 100 ? $this->cart->getQuote()->getSubtotal() : 0 ;
         return $total;
     }
-    
+
     protected function getState(?string $regionId) : ?string {
         if(is_null($regionId)){
             $this->flagship->logError("Region not set");
@@ -465,7 +566,7 @@ class FlagshipQuote
         $shipperRegionCode =$shipperRegion->getCode();
         return $shipperRegionCode;
     }
-    
+
     protected function getUnits() : string {
         $weightUnit = $this->_scopeConfig->getValue('general/locale/weight_unit',\Magento\Store\Model\ScopeInterface::SCOPE_STORE);
         if($weightUnit === 'kgs'){
@@ -473,15 +574,25 @@ class FlagshipQuote
         }
         return 'imperial';
     }
-    
+
     protected function getPayloadForPacking(array $items) : ?array {
+
         $cartItems = $items;
         $this->items = [];
         foreach ($cartItems as $item) {
-            $weight = $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight();
+            $sku = $item->getSku();
+            $product = $this->productRepository->get($sku);
+            if($product->getDataByKey('ship_as_is') == 1){
+                continue;
+            }
+
+            $weight = $product->getWeight() < 1 ? 1 : $product->getWeight();
             $temp = $this->packing->getItemsArray($item);
+
             $temp["weight"] = $weight;
+
             $this->getPayloadItems($temp,$item);
+
         }
         if(is_null($this->packing->getBoxes())){
             $this->flagship->logError("Packing Boxes not set");
@@ -492,24 +603,58 @@ class FlagshipQuote
             "boxes" => $this->packing->getBoxes(),
             "units" => $this->getUnits()
         ];
+
         return $payload;
     }
-    
-    protected function getPayloadItems(array $temp,\Magento\Quote\Model\Quote\Item $item) : array {
-        for($i=0;$i<$item->getQty();$i++){
+
+    protected function getPayloadItems(array $temp, $item) : array {
+        for($i=0;$i<$item->getQty() || $i<$item->getQtyOrdered();$i++){
             $this->items[] = $temp;
         }
         return $this->items;
     }
-    
+
     protected function getItemsArray(array $items) : array {
+
+        if(count($items) == 1){
+            $item = reset($items);
+            $sku = $item->getSku();
+            $product = $this->productRepository->get($sku);
+            if($product->getDataByKey('ship_as_is') == 1){
+                return [
+                    [
+                        'length' => ceil($product->getDataByKey('length')),
+                        'width' => ceil($product->getDataByKey('width')),
+                        'height' => ceil($product->getDataByKey('height')),
+                        'weight' => $product->getWeight(),
+                        'description' => $product->getName()
+                    ]
+                ];
+            }
+        }
+
+
         $boxes = $this->packing->getBoxes();
+
         $returnItems = [];
         if(is_null($boxes)){
             $this->getPayloadForPacking($items);
             return $this->items;
         }
         $packings = $this->packing->getPackingsFromFlagship($this->getPayloadForPacking($items));
+
+        if($packings ==  NULL){
+            return [
+                [
+                'width' => 1,
+                'height' => 1,
+                'length' => 1,
+                'weight' => 1.00,
+                'description' => 'item 1'
+            ]
+            ];
+        }
+
         foreach ($packings as $packing) {
             $temp = [
                 'width' => intval($packing->getWidth()),
@@ -543,7 +688,7 @@ class FlagshipQuote
         }
         return $url;
     }
-    
+
     protected function getQuotes(array $payload) : \Flagship\Shipping\Collections\RatesCollection {
         $token = $this->getToken();
         $storeName = $this->_scopeConfig->getValue('general/store_information/name');
@@ -560,7 +705,7 @@ class FlagshipQuote
             throw new \Magento\Framework\Exception\LocalizedException(__($e->getMessage()));
         }
     }
-    
+
     protected function getShipmentFromFlagship(string $trackingNumber) : \Flagship\Shipping\Objects\Shipment {
         $token = $this->getToken();
         $storeName = $this->_scopeConfig->getValue('general/store_information/name');

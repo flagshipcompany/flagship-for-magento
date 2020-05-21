@@ -36,7 +36,8 @@ class Index extends \Magento\Backend\App\Action
         \Flagship\Shipping\Helper\Flagship $flagship,
         \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
         \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
-        \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId
+        \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
+        \Flagship\Shipping\Model\Carrier\FlagshipQuote $flagshipQuote
     )
     {
         $this->orderRepository = $orderRepository;
@@ -56,6 +57,7 @@ class Index extends \Magento\Backend\App\Action
         $this->inlineTranslation = $inlineTranslation;
         $this->transportBuilder = $transportBuilder;
         $this->getSourceCodeByShipmentId = $getSourceCodeByShipmentId;
+        $this->flagshipQuote = $flagshipQuote;
         parent::__construct($context);
     }
 
@@ -112,15 +114,34 @@ class Index extends \Magento\Backend\App\Action
         $items = $this->getOrder()->getAllItems();
         $skus = null;
         $orderItems = [];
+        $destinationAddressForSourceSelection = $this->getDestinationAddress();
 
         foreach ($items as $item) {
             $sku = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
-            $sourceCode = $this->getSourceCodesBySkus->execute([$sku])[0];
+
+            $sourceCodes = $this->getSourceCodesBySkus->execute([$sku]);
+
+            $sourceCode = $this->flagshipQuote->getOptimumSource($sourceCodes,null,$item,$destinationAddressForSourceSelection);
+
             $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
             $orderItems[$sourceCode]['items'][] = $item;
 
         }
         return $orderItems;
+    }
+
+    protected function getDestinationAddress() : array {
+        $shippingAddress = $this->getShippingAddress();
+
+        $destinationAddress = [
+            'city' => $shippingAddress->getCity(),
+            'country' => $shippingAddress->getCountryId(),
+            'state' => $this->getStateCode( $shippingAddress->getRegionId() ),
+            'postal_code' => $shippingAddress->getPostCode(),
+      ];
+
+      return $destinationAddress;
+
     }
 
     protected function getShipAsIsProducts($orderItems){
@@ -139,22 +160,13 @@ class Index extends \Magento\Backend\App\Action
 
         $from = $this->getSender($source,$store);
         $to = $this->getReceiver($store);
+        $this->shipAsIsProducts = [];
 
         $this->addShipAsIsPackages($orderItem['items']);
-        $packages = $this->getPackages($orderItem);
-        foreach ($this->shipAsIsProducts as $value) {
-            $product = $value->getProduct();
-            $length = $product->getDataByKey('ts_dimensions_length') == NULL ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
-            $width = $product->getDataByKey('ts_dimensions_width') == NULL ? ceil($product->getDataByKey('width')) : ceil($product->getDataByKey('ts_dimensions_width'));
-            $height = $product->getDataByKey('ts_dimensions_height') == NULL ? ceil($product->getDataByKey('height')) : ceil($product->getDataByKey('ts_dimensions_height'));
 
-            $packages['items'][] = [
-                'description' => $product->getName(),
-                'length' => $length,
-                'width' => $width,
-                'height' => $height,
-                'weight' => $product->getWeight()
-            ];
+        $packages = $this->getPackages($orderItem);
+        if(count($this->shipAsIsProducts) > 0){
+            $packages = $this->getPackagesForShipAsIsProducts($packages);
         }
 
 
@@ -173,12 +185,35 @@ class Index extends \Magento\Backend\App\Action
         return $payload;
     }
 
+    protected function getPackagesForShipAsIsProducts(array $packages){
+
+        foreach ($this->shipAsIsProducts as $value) {
+            $product = $value->getProduct();
+            $length = $product->getDataByKey('ts_dimensions_length') == NULL ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
+            $width = $product->getDataByKey('ts_dimensions_width') == NULL ? ceil($product->getDataByKey('width')) : ceil($product->getDataByKey('ts_dimensions_width'));
+            $height = $product->getDataByKey('ts_dimensions_height') == NULL ? ceil($product->getDataByKey('height')) : ceil($product->getDataByKey('ts_dimensions_height'));
+
+            $packages['items'][] = [
+                'description' => $product->getName(),
+                'length' => $length,
+                'width' => $width,
+                'height' => $height,
+                'weight' => $product->getWeight()
+            ];
+        }
+        return $packages;
+    }
+
     protected function addShipAsIsPackages($orderItems){
         foreach ($orderItems as $orderItem) {
-            if($orderItem->getProduct()->getDataByKey('ship_as_is') == 1){
-                $this->shipAsIsProducts[] = $orderItem;
-                unset($orderItem);
-            }
+            $this->getShipAsIsProductsArray($orderItem);
+        }
+    }
+
+    protected function getShipAsIsProductsArray($orderItem){
+        if($orderItem->getProduct()->getDataByKey('ship_as_is') == 1){
+            $this->shipAsIsProducts[] = $orderItem;
+            unset($orderItem);
         }
     }
 

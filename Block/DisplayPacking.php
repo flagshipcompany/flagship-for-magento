@@ -20,7 +20,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         \Magento\Inventory\Model\SourceRepository $sourceRepository,
         \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Magento\Framework\Message\ManagerInterface $messageManager
+        \Magento\Framework\Message\ManagerInterface $messageManager,
+        \Magento\Catalog\Model\ProductRepository $productRepository
     ){
         parent::__construct($context);
         $this->resource = $resource;
@@ -32,6 +33,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->sourceRepository = $sourceRepository;
         $this->messageManager = $messageManager;
         $this->scopeConfig = $scopeConfig;
+        $this->productRepository = $productRepository;
     }
 
     public function getPacking() : ?array {
@@ -115,7 +117,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
         $this->items = [];
         foreach ($items as $item) {
-            $bogusVar = $item->getProduct()->getDataByKey('ship_as_is') == 1 ? $this->addToShipAsIsProducts($item) : $this->forComplexItem($item);
+            $productsShippingAsIs = $item->getProduct()->getDataByKey('ship_as_is') == 1 ? $this->addToShipAsIsProducts($item) : $this->forComplexItem($item);
         }
 
         return $this->items;
@@ -190,11 +192,15 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
      public function getItemsArray($item) : array
      {
-        $length = is_null($item->getProduct()->getDataByKey('length')) ? (is_null($item->getProduct()->getDataByKey('ts_dimensions_length')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_length')) ) : intval($item->getProduct()->getDataByKey('length'));
+        $sku = $item->getSku();
 
-        $width = is_null($item->getProduct()->getDataByKey('width')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_width')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_width')) : intval($item->getProduct()->getDataByKey('width'));
+        $product = $this->productRepository->get($sku);
 
-        $height = is_null($item->getProduct()->getDataByKey('height')) ? is_null($item->getProduct()->getDataByKey('ts_dimensions_height')) ? 1 : intval($item->getProduct()->getDataByKey('ts_dimensions_height')) : intval($item->getProduct()->getDataByKey('height'));
+        $length = is_null($product->getDataByKey('length')) ? (is_null($product->getDataByKey('ts_dimensions_length')) ? 1 : intval($product->getDataByKey('ts_dimensions_length')) ) : intval($product->getDataByKey('length'));
+
+        $width = is_null($product->getDataByKey('width')) ? is_null($product->getDataByKey('ts_dimensions_width')) ? 1 : intval($product->getDataByKey('ts_dimensions_width')) : intval($product->getDataByKey('width'));
+
+        $height = is_null($product->getDataByKey('height')) ? is_null($product->getDataByKey('ts_dimensions_height')) ? 1 : intval($product->getDataByKey('ts_dimensions_height')) : intval($product->getDataByKey('height'));
 
         return [
                 "length" => $length <= 0 ? 1 : $length,
@@ -203,9 +209,9 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
                 "height" => $height <= 0 ? 1 : $height,
 
-                "weight" => is_null($item->getProduct()->getWeight()) || $item->getProduct()->getWeight() < 1 ? 1 : $item->getProduct()->getWeight(),
+                "weight" => is_null($product->getWeight()) || $product->getWeight() < 1 ? 1 : $product->getWeight(),
 
-                "description" => strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"].' - '.$item->getProductOptions()["simple_name"] : $item->getProduct()->getSku().' - '.$item->getProduct()->getName()
+                "description" => strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"].' - '.$item->getProductOptions()["simple_name"] : $product->getSku().' - '.$product->getName()
             ];
      }
 
