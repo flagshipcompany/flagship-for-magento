@@ -112,7 +112,7 @@ class Index extends \Magento\Backend\App\Action
 
     public function getSourceCodesForOrderItems() : array {
         $items = $this->getOrder()->getAllItems();
-        $skus = null;
+        $sku = null;
         $orderItems = [];
         $destinationAddressForSourceSelection = $this->getDestinationAddress();
 

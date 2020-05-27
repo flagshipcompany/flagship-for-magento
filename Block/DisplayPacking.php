@@ -21,6 +21,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Magento\Framework\Message\ManagerInterface $messageManager,
+        \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
         \Magento\Catalog\Model\ProductRepository $productRepository
     ){
         parent::__construct($context);
@@ -33,10 +34,11 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->sourceRepository = $sourceRepository;
         $this->messageManager = $messageManager;
         $this->scopeConfig = $scopeConfig;
+        $this->getSourceCodeByShipmentId = $getSourceCodeByShipmentId;
         $this->productRepository = $productRepository;
     }
 
-    public function getPacking() : ?array {
+    public function getPacking(int $shipmentId=0) : ?array {
 
         try{
             if(is_null($this->getBoxes())){
@@ -46,10 +48,10 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
             $this->packingDetails = [];
             $this->shipAsIsProducts = [];
-            $orderItems = $this->getSourceCodesForOrderItems();
+            $orderItems = $shipmentId != 0 ? $this->getSourceCodesForShipmentItems($shipmentId) : $this->getSourceCodesForOrderItems();
 
-            foreach ($orderItems as $orderItem) {
-                $sourceCode = $orderItem['source']->getSourceCode();
+            foreach ($orderItems as $key => $orderItem) {
+                $sourceCode = $key;  //$orderItem['source']->getSourceCode();
                 $items = $orderItem['items'];
                 $packings = $this->getPackingsFromFlagship($this->getPayload($items));
 
@@ -87,10 +89,11 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         }
     }
 
-    public function getSourceCodesForOrderItems() : array {
-        $items = $this->getOrder()->getAllItems();
-        $skus = null;
+    public function getSourceCodesForOrderItems() : array { //revisit
+        $order = $this->getOrder();
         $orderItems = [];
+        $items = $order->getAllItems();
+
         foreach ($items as $item) {
             $skus = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
             $sourceCode = $this->getSourceCodesBySkus->execute([$skus])[0];
@@ -117,14 +120,12 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
         $this->items = [];
         foreach ($items as $item) {
-            $productsShippingAsIs = $item->getProduct()->getDataByKey('ship_as_is') == 1 ? $this->addToShipAsIsProducts($item) : $this->forComplexItem($item);
+            $sku = $item->getSku();
+            $product = $this->productRepository->get($sku);
+            $productsShippingAsIs = $product->getDataByKey('ship_as_is') == 1 ? $this->addToShipAsIsProducts($item) : $this->forComplexItem($item);
         }
 
         return $this->items;
-    }
-
-    protected function addToShipAsIsProducts($item){
-        $this->shipAsIsProducts[] = $item->getProduct()->getName();
     }
 
     public function isPackingEnabled() : int {
@@ -143,12 +144,13 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             "boxes" => $this->getBoxes(),
             "units" => $this->getUnits()
         ];
+
         return $payload;
     }
 
-    public function getPackingDetails() : array {
+    public function getPackingDetails(int $shipmentId = 0) : array {
         $packingContent = [];
-        $packings = $this->getPacking()['packingDetails'];
+        $packings = $this->getPacking($shipmentId)['packingDetails'];
         if(array_key_exists("error",$packings)){
             return $packings["error"];
         }
@@ -187,7 +189,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     }
 
     /*
-     *@params \Magento\Sales\Model\Order\Item or \Magento\Quote\Model\Quote\Item
+     *@params \Magento\Sales\Model\Order\Item or \Magento\Quote\Model\Quote\Item or \Magento\Sales\Model\Order\Shipment\Item
      */
 
      public function getItemsArray($item) : array
@@ -215,6 +217,25 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             ];
      }
 
+     protected function getSourceCodesForShipmentItems($shipmentId){
+         $shipment = $this->shipmentRepository->get($shipmentId);
+         $items = $shipment->getAllItems();
+
+         $shipmentItems = [];
+         $sourceCode = $this->getSourceCodeByShipmentId->execute($shipmentId);
+         foreach ($items as $item) {
+             $shipmentItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
+             $shipmentItems[$sourceCode]['items'][] = $item->getOrderItem(); //check for configurable items
+         }
+
+         return $shipmentItems;
+     }
+
+     protected function addToShipAsIsProducts($item){
+         $sku = $item->getSku();
+         $product = $this->productRepository->get($sku);
+         $this->shipAsIsProducts[] = $product->getName();
+     }
 
     protected function getOrderItemsForSource(array $orderItem) : int {
         foreach ($orderItem['items'] as $value) {
@@ -253,9 +274,12 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return $this->packingDetails;
     }
 
-    protected function getItemsforPayload(\Magento\Sales\Model\Order\Item $item) : ?array {
+    /*
+        @params \Magento\Sales\Model\Order\Item or \Magento\Sales\Model\Order\Shipment\Item
+     */
+    protected function getItemsforPayload($item) : ?array {
 
-        $qty = $item->getQtyOrdered();
+        $qty = $item->getQtyOrdered(); //getQtyShipped
         $itemsArray = $this->getItemsArray($item);
         for ($i = 0; $i < $qty ; $i++) {
             $this->items[] = $itemsArray;

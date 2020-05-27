@@ -1,12 +1,11 @@
 <?php
 namespace Flagship\Shipping\Helper;
 
-class Flagship extends \Magento\Framework\View\Element\Template{
+class Flagship{
     protected $_logger;
     protected $loggingEnabled;
     protected $redirect;
     public function __construct(
-        \Magento\Backend\App\Action\Context $context,
         \Flagship\Shipping\Logger\Logger $logger,
         \Flagship\Shipping\Model\Config $config,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
