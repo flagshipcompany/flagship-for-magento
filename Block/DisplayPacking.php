@@ -128,6 +128,29 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         return $this->items;
     }
 
+    protected function getSourceCodesForShipmentItems($shipmentId){
+        $shipment = $this->shipmentRepository->get($shipmentId);
+        $items = $shipment->getAllItems();
+        $shipmentItems = [];
+
+        $sourceCode = $this->getSourceCodeByShipmentId->execute($shipmentId);
+
+        foreach ($items as $item) {
+            $orderItem = $item->getOrderItem();
+            $shipmentItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
+
+            if($orderItem->getProductType() != 'configurable') $shipmentItems[$sourceCode]['items'][] = $orderItem;
+        }
+
+        return $shipmentItems;
+    }
+
+    protected function addToShipAsIsProducts($item){
+        $sku = $item->getSku();
+        $product = $this->productRepository->get($sku);
+        $this->shipAsIsProducts[] = $product->getName();
+    }
+
     public function isPackingEnabled() : int {
         return $this->flagship->getSettings()["packings"];
     }
@@ -217,25 +240,6 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             ];
      }
 
-     protected function getSourceCodesForShipmentItems($shipmentId){
-         $shipment = $this->shipmentRepository->get($shipmentId);
-         $items = $shipment->getAllItems();
-
-         $shipmentItems = [];
-         $sourceCode = $this->getSourceCodeByShipmentId->execute($shipmentId);
-         foreach ($items as $item) {
-             $shipmentItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
-             $shipmentItems[$sourceCode]['items'][] = $item->getOrderItem(); //check for configurable items
-         }
-
-         return $shipmentItems;
-     }
-
-     protected function addToShipAsIsProducts($item){
-         $sku = $item->getSku();
-         $product = $this->productRepository->get($sku);
-         $this->shipAsIsProducts[] = $product->getName();
-     }
 
     protected function getOrderItemsForSource(array $orderItem) : int {
         foreach ($orderItem['items'] as $value) {
