@@ -195,6 +195,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             $this->flagship->logError("Payload is NULL. Payload returned is - ".json_encode($payload));
             return NULL;
         }
+        $this->flagship->logInfo("Packings payload: ".json_encode($payload));
+        
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         try{
