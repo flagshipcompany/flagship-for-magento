@@ -685,6 +685,12 @@ class FlagshipQuote
             case 'canpar':
                 $url = 'https://www.canpar.com/en/track/TrackingAction.do?reference='.$trackingNumber.'&locale=en';
                 break;
+            case 'dicom':
+                $url = 'https://www.dicom.com/en/express/tracking/load-tracking/'.$trackingNumber.'?division=DicomExpress';
+                break;
+            default:
+                $url = SMARTSHIP_WEB_URL;
+                break;
         }
         return $url;
     }
