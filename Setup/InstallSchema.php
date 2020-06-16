@@ -86,6 +86,13 @@ class InstallSchema implements InstallSchemaInterface
                     10,
                     ['nullable' => false, 'default' => ''],
                     'Box Max Weight'
+                )->setComment("Flagship Boxes table")
+                ->addColumn(
+                    'price',
+                    \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                    10,
+                    ['nullable' => false, 'default' => '0.00'],
+                    'Box Price'
                 )->setComment("Flagship Boxes table");
         $setup->getConnection()->createTable($table);
         $setup->endSetup();

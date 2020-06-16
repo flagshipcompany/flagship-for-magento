@@ -22,7 +22,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Magento\Framework\Message\ManagerInterface $messageManager,
         \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
-        \Magento\Catalog\Model\ProductRepository $productRepository
+        \Magento\Catalog\Model\ProductRepository $productRepository,
+        \Flagship\Shipping\Model\AddBoxes $boxes
     ){
         parent::__construct($context);
         $this->resource = $resource;
@@ -36,6 +37,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->scopeConfig = $scopeConfig;
         $this->getSourceCodeByShipmentId = $getSourceCodeByShipmentId;
         $this->productRepository = $productRepository;
+        $this->boxes = $boxes;
     }
 
     public function getPacking(int $shipmentId=0) : ?array {
@@ -72,21 +74,47 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
     }
 
     public function getBoxes() : ?array  {
-        $connection = $this->resource->getConnection();
-        $tableName = $this->resource->getTableName('flagship_boxes');
-        try{
-            $sql = $connection->select()->from(
-                ["table" => $tableName]
-            );
-            $result = $connection->fetchAll($sql);
-            $this->flagship->logInfo("Retrieved boxes from databases");
-            if(count($result) > 0){
-                return $this->getBoxesValue($result);
-            }
-            return NULL;
-        } catch (\Exception $e){
-            $this->flagship->logError("Order #".$this->getOrder()->getId()." ".$e->getMessage());
+
+        $boxes = $this->getBoxesCollection();
+        $boxesArray = [];
+        foreach ($boxes as $box) {
+            $boxesArray[] = [
+                "box_model" => $box["box_model"],
+                "length"    => $box["length"],
+                "width"     => $box["width"],
+                "height"    => $box["height"],
+                "weight"    => $box["weight"],
+                "max_weight"    =>  $box["max_weight"]                
+            ];
         }
+
+        $this->flagship->logInfo("Retrieved boxes from databases");
+        if(count($boxes) > 0){
+            return $boxesArray;    
+        }
+        return NULL;
+    }
+
+    public function getBoxesWithPrices() : ?array {
+        $boxes = $this->getBoxesCollection();
+        foreach ($boxes as $box) {
+            $boxesArray[] = [
+                "box_model" => $box["box_model"],
+                "length"    => $box["length"],
+                "width"     => $box["width"],
+                "height"    => $box["height"],
+                "weight"    => $box["weight"],
+                "max_weight"    =>  $box["max_weight"],
+                "price"     => $box["price"]
+                
+            ];
+        }
+
+        $this->flagship->logInfo("Retrieved boxes with prices from databases");
+        if(count($boxes) > 0){
+            return $boxesArray;    
+        }
+        return NULL;
     }
 
     public function getSourceCodesForOrderItems() : array { //revisit
@@ -126,6 +154,11 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         }
 
         return $this->items;
+    }
+
+    protected function getBoxesCollection() : array {
+        $boxes = $this->boxes->getCollection()->toArray()['items'];
+        return $boxes;
     }
 
     protected function getSourceCodesForShipmentItems($shipmentId){
@@ -333,7 +366,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
                 "width"     => $row["width"],
                 "height"    => $row["height"],
                 "weight"    => $row["weight"],
-                "max_weight"    =>  $row["max_weight"]
+                "max_weight"    =>  $row["max_weight"],
+                "price" => $row["price"]
             ];
         }
         return $boxes;

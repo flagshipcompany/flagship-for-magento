@@ -4,81 +4,106 @@
     ?>
     <p>Any shipments made in the test environment will only be for testing. These cannot be shipped.</p>
     <br>
-  <div class="form-group">
+    <div class="form-group">
+        <table>
+            <tr>
+                <td>
+                    
+                    <label for="token" ><span>Enter API Token</span></label>
+                </td>
+                <td>
+                    <?php if($block->isTokenSet()) : ?>
+                    <input type="text" class="input-text form-element admin__control-text" name="api_token"/>
+                    <?php else : ?>
+                    <input type="text" class="input-text form-element admin__control-text" name="api_token" required/>
+                    <?php endif; ?>
+                    
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    
+                    <label for="env" ><span>Enable Test Environment</span></label>
+                </td>
+                <td>
+                    <select class="select form-element admin__control-select" name="test_env">
+                        <?php if(isset($block->getSettings()['test_env'])): ?>
+                            <?php $text = $block->getSettings()['test_env'] ? 'Yes' : 'No';
+                                $value = $block->getSettings()['test_env'] ? 1 : 0;
+                            ?>
+                            <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
+                            <?php $text = !$block->getSettings()['test_env'] ? 'Yes' : 'No';
+                                $value = !$block->getSettings()['test_env'] ? 1 : 0;
+                            ?>
+                            <option value="<?= $value ?>" ><?= $text ?></option>
+                        <?php else: ?>
+                            <option value="1" selected="selected">Yes</option>
+                            <option value="0">No</option>
+                        <?php endif; ?>
+                    </select>
+                    
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    
+                    <label for="packing" ><span>Enable Packings</span></label>
+                </td>
+                <td>
+                    <select class="select form-element admin__control-select" name="packings">
+                        <?php if(isset($block->getSettings()['packings'])): ?>
+                            <?php $text = $block->getSettings()['packings'] ? 'Yes' : 'No';
+                            $value = $block->getSettings()['packings'] ? 1 : 0;
+                        ?>
+                        <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
+                        <?php $text = !$block->getSettings()['packings'] ? 'Yes' : 'No';
+                            $value = !$block->getSettings()['packings'] ? 1 : 0;
+                        ?>
+                        <option value="<?= $value ?>" ><?= $text ?></option>
+                        <?php else: ?>
+                            <option value="1" selected="selected">Yes</option>
+                            <option value="0">No</option>
+                        <?php endif; ?>
+                    </select>
+                
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="logging" ><span>Enable Logging</span></label>
+                </td>
+                <td>
+                    <select class="select form-element admin__control-select" name="logging">
+                        <?php if(isset($block->getSettings()['log'])): ?>
+                            <?php $text = $block->getSettings()['log'] ? 'Yes' : 'No';
+                            $value = $block->getSettings()['log'] ? 1 : 0;
+                        ?>
+                        <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
+                            <?php $text = !$block->getSettings()['log'] ? 'Yes' : 'No';
+                            $value = !$block->getSettings()['log'] ? 1 : 0;
+                        ?>
+                        <option value="<?= $value ?>" ><?= $text ?></option>
+                        <?php else: ?>
+                            <option value="1" selected="selected">Yes</option>
+                            <option value="0">No</option>
+                        <?php endif; ?>
 
-    <div class="label">
-    <label for="token"><span>Enter API Token</span></label>
-    <?php if($block->isTokenSet()) : ?>
-      <input type="text" class="input-text admin__control-text" name="api_token"/>
-    <?php else : ?>
-      <input type="text" class="input-text admin__control-text" name="api_token" required/>
-    <?php endif; ?>
-    </div>
-    <br>
-
-    <div class="label">
-    <label for="env"><span>Enable Test Environment</span></label>
-      <select class="select admin__control-select" name="test_env">
-          <?php if(isset($block->getSettings()['test_env'])): ?>
-          <?php $text = $block->getSettings()['test_env'] ? 'Yes' : 'No';
-                $value = $block->getSettings()['test_env'] ? 1 : 0;
-          ?>
-          <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
-          <?php $text = !$block->getSettings()['test_env'] ? 'Yes' : 'No';
-                $value = !$block->getSettings()['test_env'] ? 1 : 0;
-          ?>
-          <option value="<?= $value ?>" ><?= $text ?></option>
-      <?php else: ?>
-          <option value="1" selected="selected">Yes</option>
-          <option value="0">No</option>
-      <?php endif; ?>
-      </select>
-      </div>
-      <br>
-
-    <div class="label">
-    <label for="packing"><span>Enable Packings</span></label>
-      <select class="select admin__control-select" name="packings">
-          <?php if(isset($block->getSettings()['packings'])): ?>
-          <?php $text = $block->getSettings()['packings'] ? 'Yes' : 'No';
-                $value = $block->getSettings()['packings'] ? 1 : 0;
-          ?>
-          <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
-          <?php $text = !$block->getSettings()['packings'] ? 'Yes' : 'No';
-                $value = !$block->getSettings()['packings'] ? 1 : 0;
-          ?>
-          <option value="<?= $value ?>" ><?= $text ?></option>
-      <?php else: ?>
-          <option value="1" selected="selected">Yes</option>
-          <option value="0">No</option>
-      <?php endif; ?>
-      </select>
-      </div>
-      <br>
-
-    <div class="label">
-    <label for="logging"><span>Enable Logging</span></label>
-      <select class="select admin__control-select" name="logging">
-          <?php if(isset($block->getSettings()['log'])): ?>
-          <?php $text = $block->getSettings()['log'] ? 'Yes' : 'No';
-                $value = $block->getSettings()['log'] ? 1 : 0;
-          ?>
-          <option value="<?= $value ?>" selected="selected"><?= $text ?></option>
-          <?php $text = !$block->getSettings()['log'] ? 'Yes' : 'No';
-                $value = !$block->getSettings()['log'] ? 1 : 0;
-          ?>
-          <option value="<?= $value ?>" ><?= $text ?></option>
-        <?php else: ?>
-          <option value="1" selected="selected">Yes</option>
-          <option value="0">No</option>
-        <?php endif; ?>
-
-      </select>
-      </div>
-      <br>
-    <button type="submit" class="action-primary scalable save">Save</button>
-
+                  </select>
+                
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><button type="submit" class="action-primary scalable save form-element">Save</button></td>
+            </tr>
+        </table>
+    
 </div>
-
 </form>
 </body>
+<style>
+    .form-element{
+        margin:15px;
+        width:80%;
+    }
+</style>

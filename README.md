@@ -49,7 +49,7 @@ Enable the shipping methods, Store > Configuration > Sales > Shipping Methods > 
 
 ## Shipping
 
-When a customer places an order, the selected shipping methods are shown and the customer can choose a shipping method.
+When a customer places an order, the selected shipping methods are shown and the customer can choose a shipping method. (Please note that all quotes are inclusive of taxes)
 
 To make a FlagShip shipment, Sales > Orders > Order# 123 > Ship > Send To FlagShip
 
@@ -58,6 +58,10 @@ Order# 123 > Shipments > Shipment# 0001 > Confirm FlagShip Shipment
 You can choose a different shipping method from the customer's selection while confirming the shipment.
 
 Once the shipment is confirmed, you can print the shipping label, track the shipment.
+
+## Exclude Taxes From Magento on Shipping
+
+Magento Backend > Stores > Configuration > Sales > Tax > Calculation Settings > Shipping Prices : Excluding Tax
 
 ## Packing
 

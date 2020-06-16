@@ -17,6 +17,7 @@ class FlagshipQuote
     protected $flagshipLogger;
     protected $flagshipLoggingEnabled;
     protected $flagship;
+    protected $totalForBoxesUsed = 0.00;
     public function __construct(
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Magento\Quote\Model\Quote\Address\RateResult\ErrorFactory $rateErrorFactory,
@@ -289,7 +290,6 @@ class FlagshipQuote
         return $cheapestArray;
     }
 
-
     protected function rateForLtl(int $ltlFlag) : \Magento\Shipping\Model\Rate\Result {
         $result = $this->_rateFactory->create();
         $method = $this->_rateMethodFactory->create();
@@ -417,6 +417,11 @@ class FlagshipQuote
         }
         $shipmentTax = array_sum($rate['taxesTotal']);
         $amount += $shipmentTax;
+      
+        $boxesTotal = $this->totalForBoxesUsed;         
+        if($boxesTotal > 0){   
+            $amount += $boxesTotal;
+        }
         $method->setPrice($amount);
         $method->setCost($amount);
         $this->flagship->logInfo('Prepared rate for '. $methodTitle);
@@ -527,7 +532,6 @@ class FlagshipQuote
 
     protected function addShipAsIsItemsToPayload(array $items, array $packages){
 
-        // $shipAsIsArray = [];
         foreach ($items as $item) {
             $sku = $item->getSku();
             $product = $this->productRepository->get($sku);
@@ -637,10 +641,11 @@ class FlagshipQuote
         $boxes = $this->packing->getBoxes();
 
         $returnItems = [];
-        if(is_null($boxes)){
+        if($boxes == NULL){
             $this->getPayloadForPacking($items);
             return $this->items;
         }
+
         $packings = $this->packing->getPackingsFromFlagship($this->getPayloadForPacking($items));
 
         if($packings ==  NULL){
@@ -650,9 +655,14 @@ class FlagshipQuote
                 'height' => 1,
                 'length' => 1,
                 'weight' => 1.00,
-                'description' => 'item 1'
+                'description' => 'Box unknown'
             ]
             ];
+        }
+        
+        if($this->_scopeConfig->getValue('carriers/flagship/pick_and_pack_price')){
+            $boxModelsUsed = $this->prepareBoxModelsUsedArray($packings);            
+            $this->totalForBoxesUsed = $this->getTotalForBoxesUsed($boxModelsUsed);
         }
 
         foreach ($packings as $packing) {
@@ -665,7 +675,33 @@ class FlagshipQuote
             ];
             $returnItems[] = $temp;
         }
+        
         return $returnItems;
+    }
+
+    protected function getTotalForBoxesUsed(array $boxModelsUsed) : float {
+        $boxes = $this->packing->getBoxesWithPrices();
+        $total = 0.00;
+
+        $boxesAndCount = array_count_values($boxModelsUsed);
+        $tempBoxes = [];
+        foreach ($boxes as $box) {
+            $tempBoxes[$box["box_model"]] = $box["price"];
+        }
+        
+        foreach ($boxesAndCount as $key => $value) {
+            $total += $tempBoxes[$key]*$value;
+        }
+        return $total;
+    }
+
+    protected function prepareBoxModelsUsedArray($packings) : array{
+        $boxModelsUsed = [];
+
+        foreach ($packings as $packing) {
+            $boxModelsUsed[] = $packing->getBoxModel();
+        }
+        return $boxModelsUsed;
     }
 
     protected function getTrackingUrl(string $courierName, string $trackingNumber){

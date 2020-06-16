@@ -7,8 +7,7 @@
     </head>
     <body>
         <referenceContainer name="content">
-            <block class="Flagship\Shipping\Block\AddBoxes" template="Flagship_Shipping::addBoxes.phtml"
-                name="addBoxes"/>
+            <block class="Flagship\Shipping\Block\AddBoxes" template="Flagship_Shipping::addBoxes.phtml" name="addBoxes"/>
         </referenceContainer>
     </body>
 </page>

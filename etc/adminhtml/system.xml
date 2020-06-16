@@ -34,6 +34,10 @@
                     <label>Markup percentage on courier rates</label>
                     <comment>Adds a percentage on top of shipping rates</comment>
                 </field>
+                <field id="pick_and_pack_price" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Add price for each box</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
                 <field id="allowed_methods" translate="label" type="multiselect" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
                     <label>Allowed Methods</label>
                     <source_model>Flagship\Shipping\Model\Carrier\FlagshipAllowedMethods</source_model>

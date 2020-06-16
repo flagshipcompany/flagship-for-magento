@@ -30,4 +30,11 @@ class AddBoxes extends \Magento\Framework\View\Element\Template{
     public function getPackingsSetting() : ?string {
         return $this->flagship->getSettings()["packings"];
     }
+
+    public function showBoxPrice() : bool {
+        return $this->_scopeConfig->getValue(
+            'carriers/flagship/pick_and_pack_price',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+        );
+    }
 }

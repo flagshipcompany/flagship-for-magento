@@ -186,6 +186,23 @@
                 </item>
             </argument>
         </column> 
+
+        <column name="price">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="visible" xsi:type="boolean">true</item>
+                    <item name="dataType" xsi:type="string">text</item>
+                    <item name="formElement" xsi:type="string">input</item>
+                    <item name="source" xsi:type="string">boxes</item>
+                    <item name="dataScope" xsi:type="string">price</item>
+                    <item name="label" xsi:type="string" translate="true">Box price</item>
+                    <item name="filter" xsi:type="string">text</item>
+                    <item name="validation" xsi:type="array">
+                    <item name="required-entry" xsi:type="boolean">true</item>
+                    </item>
+                </item>
+            </argument>
+        </column> 
         <!-- action columns edit and delete -->
         <actionsColumn name="actions" class="Flagship\Shipping\Ui\Component\Listing\Column\BoxesActions">
             <argument name="data" xsi:type="array">
