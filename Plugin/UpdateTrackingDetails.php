@@ -45,7 +45,7 @@ class UpdateTrackingDetails{
         return;
     }
 
-    protected function updateTrackingDetails(int $flagshipId,\Magento\Sales\Model\Order\Shipment $shipment){
+    protected function updateTrackingDetails(?int $flagshipId,\Magento\Sales\Model\Order\Shipment $shipment){
         if(is_null($flagshipId)){
             return NULL;
         }

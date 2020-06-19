@@ -186,7 +186,7 @@ class FlagshipQuote
 
             $productQtyPerSource = $this->getQuantityInformationPerSource->execute($sku);
 
-            $sourceCodes = $this->getSourceCodesForCartItems($productQtyPerSource,$sourceCodes,$item);
+            $sourceCodes = $this->getSourceCodesForCartItems($productQtyPerSource,$sourceCodes,$item,$sku);
             $sourceCode = $this->getOptimumSource($sourceCodes,$request,$item);
             $orderItems[$sourceCode]["source"] = $this->sourceRepository->get($sourceCode);
             $orderItems[$sourceCode]["items"][] = $item;
@@ -199,6 +199,7 @@ class FlagshipQuote
             $this->flagship->logInfo("Quotes payload: ". json_encode($payload));
             $sourceCode = $orderItem["source"]->getSourceCode();
             $ltlFlagArray[] = $this->checkPayloadForLtl($payload);
+            $boxesTotal[] = $this->getBoxesTotalFromPayload($payload);
             $quotes[$sourceCode] = $this->getQuotes($payload);
         }
 
@@ -212,10 +213,13 @@ class FlagshipQuote
             return $this->rateForLtl($ltlFlag);
         }
 
-        return $this->getRatesResult($rates);
+        return $this->getRatesResult($rates,$boxesTotal);
     }
 
-    public function getOptimumSource(array $sourceCodes,$request=null, $item, $destinationAddress = null){ //\ Magento\Quote\Model\Quote\Item
+    /*
+     *  type for @param item can vary \Magento\Quote\Model\Quote\Item
+     */
+    public function getOptimumSource(array $sourceCodes,RateRequest $request=null, $item, $destinationAddress = null){
 
         $sourceCode = $sourceCodes[0];
         $quotes = [];
@@ -227,7 +231,24 @@ class FlagshipQuote
         return $sourceCode;
     }
 
-    protected function getQuotesForAllSources(array $sourceCodes, $item,$request = null,$destinationAddress = null){
+    protected function getBoxesTotalFromPayload(array $payload){
+        $items = $payload["packages"]["items"];
+        $boxes = $this->packing->getBoxesWithPrices();
+        $total = 0.00;
+        foreach ($boxes as $box) {
+            $boxesPrices[$box["box_model"]] = $box["price"];
+        }
+        $boxesNames = array_keys($boxesPrices);
+        foreach ($items as $item) {
+            $total = in_array($item["description"],$boxesNames) ? $total + $boxesPrices[$item["description"]] : $total;
+        }
+        return $total;
+    }
+
+    /*
+     *  type for @param item can vary
+     */
+    protected function getQuotesForAllSources(array $sourceCodes, $item,$request = null,array $destinationAddress = null){
 
         foreach ($sourceCodes as $value) {
             $source = $this->sourceRepository->get($value);
@@ -237,7 +258,7 @@ class FlagshipQuote
         return $quotes;
     }
 
-    protected function getSourceCodesForCartItems(array $productQtyPerSource,array $sourceCodes, $item){
+    protected function getSourceCodesForCartItems(array $productQtyPerSource,array $sourceCodes, $item,string $sku){
         foreach ($productQtyPerSource as $value) {
             $sourceCodes = $this->getSourceCodesForItem($value,$item,$sourceCodes);
         }
@@ -344,12 +365,12 @@ class FlagshipQuote
         return $rates;
     }
 
-    protected function getRatesResult(array $rates) : \Magento\Shipping\Model\Rate\Result {
+    protected function getRatesResult(array $rates, array $boxesTotal) : \Magento\Shipping\Model\Rate\Result {
         $result = $this->_rateFactory->create();
         try{
             $this->flagship->logInfo('Retrieved quotes from FlagShip');
             foreach ($rates as $rate) {
-                $result->append($this->prepareShippingMethods($rate));
+                $result->append($this->prepareShippingMethods($rate,$boxesTotal));
             }
             $result->append($this->prepareDistributionMethod());
             return $result;
@@ -396,7 +417,7 @@ class FlagshipQuote
         return $orderId;
     }
 
-    protected function prepareShippingMethods(array $rate) : \Magento\Quote\Model\Quote\Address\RateResult\Method {
+    protected function prepareShippingMethods(array $rate, array $boxesTotal) : \Magento\Quote\Model\Quote\Address\RateResult\Method {
         $method = $this->_rateMethodFactory->create();
         $method->setCarrier($rate['details']['carrier']);
         $method->setCarrierTitle($rate['details']['carrier_title']);
@@ -408,7 +429,7 @@ class FlagshipQuote
         $method->setMethodTitle($methodTitle);
         $amount = array_sum($rate['subtotal']);
         $markup = $this->getConfigData('markup');
-        $flatFee = $this->getConfigData('flat_fee');
+        $flatFee = $this->getConfigData('flat_fe1e');
         if($markup > 0){
             $amount += ($markup/100)*$amount;
         }
@@ -417,11 +438,9 @@ class FlagshipQuote
         }
         $shipmentTax = array_sum($rate['taxesTotal']);
         $amount += $shipmentTax;
-      
-        $boxesTotal = $this->totalForBoxesUsed;         
-        if($boxesTotal > 0){   
-            $amount += $boxesTotal;
-        }
+
+        $amount += array_sum($boxesTotal);
+
         $method->setPrice($amount);
         $method->setCost($amount);
         $this->flagship->logInfo('Prepared rate for '. $methodTitle);
@@ -458,7 +477,7 @@ class FlagshipQuote
         return $from;
     }
 
-    protected function getReceiverAddress(?RateRequest $request, $destinationAddress = null) : array {
+    protected function getReceiverAddress(?RateRequest $request, array $destinationAddress = null) : array {
         if($request == NULL && $destinationAddress != NULL){
             $to = [
                 "city" => $destinationAddress['city'],
@@ -491,7 +510,7 @@ class FlagshipQuote
         return $to;
     }
 
-    protected function getPayload(?RateRequest $request = null,\Magento\Inventory\Model\Source $source,array $items, $destinationAddress = null) : array {
+    protected function getPayload(?RateRequest $request = null,\Magento\Inventory\Model\Source $source,array $items, array $destinationAddress = null) : array {
 
         $insuranceFlag  = $this->getConfigData('insuranceflag');
         $from = $this->getSenderAddress($source);
@@ -659,11 +678,6 @@ class FlagshipQuote
             ]
             ];
         }
-        
-        if($this->_scopeConfig->getValue('carriers/flagship/pick_and_pack_price')){
-            $boxModelsUsed = $this->prepareBoxModelsUsedArray($packings);            
-            $this->totalForBoxesUsed = $this->getTotalForBoxesUsed($boxModelsUsed);
-        }
 
         foreach ($packings as $packing) {
             $temp = [
@@ -675,33 +689,8 @@ class FlagshipQuote
             ];
             $returnItems[] = $temp;
         }
-        
+
         return $returnItems;
-    }
-
-    protected function getTotalForBoxesUsed(array $boxModelsUsed) : float {
-        $boxes = $this->packing->getBoxesWithPrices();
-        $total = 0.00;
-
-        $boxesAndCount = array_count_values($boxModelsUsed);
-        $tempBoxes = [];
-        foreach ($boxes as $box) {
-            $tempBoxes[$box["box_model"]] = $box["price"];
-        }
-        
-        foreach ($boxesAndCount as $key => $value) {
-            $total += $tempBoxes[$key]*$value;
-        }
-        return $total;
-    }
-
-    protected function prepareBoxModelsUsedArray($packings) : array{
-        $boxModelsUsed = [];
-
-        foreach ($packings as $packing) {
-            $boxModelsUsed[] = $packing->getBoxModel();
-        }
-        return $boxModelsUsed;
     }
 
     protected function getTrackingUrl(string $courierName, string $trackingNumber){
