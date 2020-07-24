@@ -177,6 +177,7 @@ class FlagshipQuote
         $productSkus = [];
         $sku = [];
         $quotes = [];
+        $boxesTotal = [];
 
         foreach ($cartItems as $item) {
             $sourceCodes = [];
@@ -188,19 +189,18 @@ class FlagshipQuote
 
             $sourceCodes = $this->getSourceCodesForCartItems($productQtyPerSource,$sourceCodes,$item,$sku);
             $sourceCode = $this->getOptimumSource($sourceCodes,$request,$item);
-            $orderItems[$sourceCode]["source"] = $this->sourceRepository->get($sourceCode);
-            $orderItems[$sourceCode]["items"][] = $item;
+            $orderItems[$sourceCode] = $this->skipIfItemIsDownloadable($orderItems,$sourceCode,$item);
         }
 
         $ltlFlagArray = [];
-
+        $dataArray = [];
         foreach ($orderItems as $orderItem) { //key is sku - source code
-            $payload = $this->getPayload($request,$orderItem["source"],$orderItem["items"]);
-            $this->flagship->logInfo("Quotes payload: ". json_encode($payload));
-            $sourceCode = $orderItem["source"]->getSourceCode();
-            $ltlFlagArray[] = $this->checkPayloadForLtl($payload);
-            $boxesTotal[] = $this->getBoxesTotalFromPayload($payload);
-            $quotes[$sourceCode] = $this->getQuotes($payload);
+            $dataArray = $this->getDataForQuote($orderItem,$request,$dataArray);
+
+            $ltlFlagArray = array_key_exists('ltlFlagArray', $dataArray) ? $dataArray['ltlFlagArray'] : [];
+            $boxesTotal = array_key_exists('boxesTotal', $dataArray) ? $dataArray['boxesTotal']: [] ;
+            $quotes = array_key_exists('quotes', $dataArray) ? $dataArray['quotes'] : [];
+
         }
 
         $rates = [];
@@ -220,7 +220,6 @@ class FlagshipQuote
      *  type for @param item can vary \Magento\Quote\Model\Quote\Item
      */
     public function getOptimumSource(array $sourceCodes,RateRequest $request=null, $item, $destinationAddress = null){
-
         $sourceCode = $sourceCodes[0];
         $quotes = [];
         if(count($sourceCodes) > 1){
@@ -229,6 +228,29 @@ class FlagshipQuote
         }
 
         return $sourceCode;
+    }
+
+    protected function getDataForQuote(array $orderItem,RateRequest $request,array $dataArray){
+        if(array_key_exists('items', $orderItem)){
+            $payload = $this->getPayload($request,$orderItem["source"],$orderItem["items"]);
+            $this->flagship->logInfo("Quotes payload: ". json_encode($payload));
+            $sourceCode = $orderItem["source"]->getSourceCode();
+            $dataArray['ltlFlagArray'][]  = $this->checkPayloadForLtl($payload);
+            $dataArray['boxesTotal'][] = $this->getBoxesTotalFromPayload($payload);
+            $dataArray['quotes'][$sourceCode] = $this->getQuotes($payload);
+        }
+        return $dataArray;
+    }
+
+    /*
+     *  type for @param item can vary \Magento\Quote\Model\Quote\Item
+     */
+    protected function skipIfItemIsDownloadable(array $orderItems,string $sourceCode,$item){
+        $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
+        if( $item->getProductType() != 'downloadable'){
+            $orderItems[$sourceCode]['items'][] = $item;
+        }
+        return $orderItems[$sourceCode];
     }
 
     protected function getBoxesTotalFromPayload(array $payload){
@@ -372,6 +394,7 @@ class FlagshipQuote
             foreach ($rates as $rate) {
                 $result->append($this->prepareShippingMethods($rate,$boxesTotal));
             }
+
             $result->append($this->prepareDistributionMethod());
             return $result;
         }

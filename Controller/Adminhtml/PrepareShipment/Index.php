@@ -123,11 +123,17 @@ class Index extends \Magento\Backend\App\Action
 
             $sourceCode = $this->flagshipQuote->getOptimumSource($sourceCodes,null,$item,$destinationAddressForSourceSelection);
 
-            $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
-            $orderItems[$sourceCode]['items'][] = $item;
-
+            $orderItems[$sourceCode] = $this->skipIfItemIsDownloadable($orderItems,$sourceCode,$item);
         }
         return $orderItems;
+    }
+
+    protected function skipIfItemIsDownloadable(array $orderItems,string $sourceCode,\Magento\Sales\Model\Order\Item $item) : array {
+        $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
+        if( $item->getProductType() != 'downloadable'){
+            $orderItems[$sourceCode]['items'][] = $item;
+        }
+        return $orderItems[$sourceCode];
     }
 
     protected function getDestinationAddress() : array {
