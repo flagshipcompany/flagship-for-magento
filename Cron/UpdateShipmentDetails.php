@@ -2,6 +2,7 @@
 
 namespace Flagship\Shipping\Cron;
 use \Flagship\Shipping\Flagship;
+use Flagship\Shipping\Exceptions\GetShipmentByIdException;
 
 class UpdateShipmentDetails{
 
@@ -22,25 +23,31 @@ class UpdateShipmentDetails{
 
         foreach ($collection as $shipment) {
             $flagshipShipmentId = $shipment->getDataByKey('flagship_shipment_id');
+            $this->isShipmentConfirmed($flagshipShipmentId,$shipment);
         }
         return;
     }
 
-    protected function isShipmentConfirmed(int $flagshipShipmentId) : int {
+    protected function isShipmentConfirmed(int $flagshipShipmentId,\Magento\Sales\Model\Order\Shipment $shipment) : int {
         $token = $this->flagship->getSettings()["token"];
         $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
         $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
-        $flagshipShipment = $flagship->getShipmentByIdRequest($flagshipShipmentId)->setStoreName($storeName)->execute();
+        try{
+            $flagshipShipment = $flagship->getShipmentByIdRequest($flagshipShipmentId)->setStoreName($storeName)->execute();
 
-        if(strcasecmp($flagshipShipment->getStatus(),'Prequoted') != 0){
-            $this->getTrackingStatus($flagshipShipmentId);
+            if(strcasecmp($flagshipShipment->getStatus(),'Prequoted') != 0){
+                $this->getTrackingStatus($flagshipShipment,$shipment);
+            }
+            return 0;
+        } catch(GetShipmentByIdException $e){
+            $this->flagship->logError($e->getMessage());
+            return 1;
         }
-        return 0;
     }
 
-    protected function getTrackingStatus(int $flagshipShipmentId) : int {
-        $this->tracking->updateShipmentTrackingData($flagshipShipment);
+    protected function getTrackingStatus(\Flagship\Shipping\Objects\Shipment $flagshipShipment,\Magento\Sales\Model\Order\Shipment $shipment) : int {
+        $this->tracking->updateShipmentTrackingData($flagshipShipment,$shipment);
         return 0;
     }
 }
