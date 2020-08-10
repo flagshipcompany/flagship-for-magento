@@ -84,13 +84,13 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
                 "width"     => $box["width"],
                 "height"    => $box["height"],
                 "weight"    => $box["weight"],
-                "max_weight"    =>  $box["max_weight"]                
+                "max_weight"    =>  $box["max_weight"]
             ];
         }
 
         $this->flagship->logInfo("Retrieved boxes from databases");
         if(count($boxes) > 0){
-            return $boxesArray;    
+            return $boxesArray;
         }
         return NULL;
     }
@@ -105,14 +105,14 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
                 "height"    => $box["height"],
                 "weight"    => $box["weight"],
                 "max_weight"    =>  $box["max_weight"],
-                "price"     => $box["price"]
-                
+                "price"     => array_key_exists('price',$box) ? $box["price"] : 0.00
+
             ];
         }
 
         $this->flagship->logInfo("Retrieved boxes with prices from databases");
         if(count($boxes) > 0){
-            return $boxesArray;    
+            return $boxesArray;
         }
         return NULL;
     }
@@ -123,7 +123,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $items = $order->getAllItems();
 
         foreach ($items as $item) {
-            $skus = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
+            $skus = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getSku();
             $sourceCode = $this->getSourceCodesBySkus->execute([$skus])[0];
             $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
             if($item->getProductType() != 'configurable') $orderItems[$sourceCode]['items'][] = $item;
@@ -229,7 +229,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
             return NULL;
         }
         $this->flagship->logInfo("Packings payload: ".json_encode($payload));
-        
+
         $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
 
         try{
