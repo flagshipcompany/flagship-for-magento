@@ -50,7 +50,8 @@ class FlagshipQuote
         \Magento\Customer\Model\ResourceModel\Address\Collection $customerAddressCollection,
         \Magento\Catalog\Model\Product\Option $productOption,
         \Magento\InventoryConfigurableProductAdminUi\Model\GetQuantityInformationPerSource $getQuantityInformationPerSource,
-       \Magento\Catalog\Model\ProductRepository $productRepository
+        \Magento\Framework\Module\Manager $moduleManager,
+        \Magento\Catalog\Model\ProductRepository $productRepository
     ) {
         $this->request = $request;
         $this->cart = $cart;
@@ -68,6 +69,7 @@ class FlagshipQuote
         $this->customerAddressCollection = $customerAddressCollection;
         $this->productOption = $productOption;
         $this->getQuantityInformationPerSource = $getQuantityInformationPerSource;
+        $this->moduleManager = $moduleManager;
         $this->productRepository = $productRepository;
 
         parent::__construct(
@@ -407,9 +409,10 @@ class FlagshipQuote
         }
     }
 
-    protected function prepareDistributionMethod() : \Magento\Quote\Model\Quote\Address\RateResult\Method {
+    protected function prepareDistributionMethod() : \Magento\Quote\Model\Quote\Address\RateResult\Method
+    {
         $method = $this->_rateMethodFactory->create();
-        $carrier = $this->customerSession->getDistribution() == 'on' ? self::SHIPPING_CODE : 'distribution' ;
+        $carrier = $this->moduleManager->isEnabled('Flagship_Fulfillment') ? self::SHIPPING_CODE : 'distribution' ;
         $method->setCarrier($carrier);
         $method->setCarrierTitle('Method not available for checkout');
         $method->setMethod('distribution');
@@ -418,6 +421,8 @@ class FlagshipQuote
         $method->setPrice($amount);
         $method->setCost($amount);
         $this->flagship->logInfo('Prepared distribution method');
+        $this->flagship->logInfo($carrier);
+
         return $method;
     }
 
