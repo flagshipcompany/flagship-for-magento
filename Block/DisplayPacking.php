@@ -105,7 +105,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
                 "height"    => $box["height"],
                 "weight"    => $box["weight"],
                 "max_weight"    =>  $box["max_weight"],
-                "price"     => array_key_exists('price',$box) ? $box["price"] : 0.00
+                "price"     => array_key_exists("price", $box) ? $box["price"] : 0.00
 
             ];
         }
@@ -123,7 +123,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $items = $order->getAllItems();
 
         foreach ($items as $item) {
-            $skus = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getSku();
+            $skus = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
             $sourceCode = $this->getSourceCodesBySkus->execute([$skus])[0];
             $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
             if($item->getProductType() != 'configurable') $orderItems[$sourceCode]['items'][] = $item;
@@ -148,12 +148,24 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
 
         $this->items = [];
         foreach ($items as $item) {
+            $this->skipDownloadableProductsFromPayload($item);
+        }
+
+        return $this->items;
+    }
+
+    /*
+     * @params \Magento\Sales\Model\Order\Item or \Magento\Quote\Model\Quote\Item or \Magento\Sales\Model\Order\Shipment\Item
+     */
+    protected function skipDownloadableProductsFromPayload($item) : int
+    {
+        if($item->getProductType() != 'downloadable')
+        {
             $sku = $item->getSku();
             $product = $this->productRepository->get($sku);
             $productsShippingAsIs = $product->getDataByKey('ship_as_is') == 1 ? $this->addToShipAsIsProducts($item) : $this->forComplexItem($item);
         }
-
-        return $this->items;
+        return 0;
     }
 
     protected function getBoxesCollection() : array {

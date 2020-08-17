@@ -168,7 +168,10 @@ class Index extends \Magento\Backend\App\Action
         $to = $this->getReceiver($store);
         $this->shipAsIsProducts = [];
 
-        $this->addShipAsIsPackages($orderItem['items']);
+        if(array_key_exists('items', $orderItem))
+        {
+            $this->addShipAsIsPackages($orderItem['items']);
+        }
 
         $packages = $this->getPackages($orderItem);
         if(count($this->shipAsIsProducts) > 0){
@@ -224,7 +227,7 @@ class Index extends \Magento\Backend\App\Action
     }
 
     public function getPackages(array $orderItem) : array {
-        $items = $orderItem['items'];
+        $items = array_key_exists('items', $orderItem) ? $orderItem['items'] : [];
         $packageItems = [];
         foreach ($items as $item) {
             $packageItems = $this->getPackageItems($item,$packageItems);
@@ -549,8 +552,10 @@ class Index extends \Magento\Backend\App\Action
     }
 
     protected function setFlagshipShipmentId(int $id,array $orderItem) : int {
-
-        $this->createShipment($id,$orderItem);
+        if(array_key_exists('items', $orderItem))
+        {
+            $this->createShipment($id,$orderItem);
+        }
         return 0;
     }
 
