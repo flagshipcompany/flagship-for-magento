@@ -457,7 +457,7 @@ class FlagshipQuote
         $method->setMethodTitle($methodTitle);
         $amount = array_sum($rate['subtotal']);
         $markup = $this->getConfigData('markup');
-        $flatFee = $this->getConfigData('flat_fe1e');
+        $flatFee = $this->getConfigData('flat_fee');
         if($markup > 0){
             $amount += ($markup/100)*$amount;
         }
