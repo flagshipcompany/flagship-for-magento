@@ -181,7 +181,9 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $sourceCode = $this->getSourceCodeByShipmentId->execute($shipmentId);
 
         foreach ($items as $item) {
-            $orderItem = $item->getOrderItem();
+            $orderItemId = $item->getOrderItemId();
+            $orderItem = $this->orderItemRepository->get($orderItemId);
+
             $shipmentItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
 
             if($orderItem->getProductType() != 'configurable') $shipmentItems[$sourceCode]['items'][] = $orderItem;
