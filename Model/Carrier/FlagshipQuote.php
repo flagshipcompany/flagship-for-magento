@@ -108,20 +108,27 @@ class FlagshipQuote
         $result = $this->_trackFactory->create();
         $status = $this->_trackStatusFactory->create();
         $status->setCarrier($this->getCarrierCode());
+    
         if(stristr($tracking, 'Unconfirmed') !== false ){
             $shipmentId = substr($tracking,strpos($tracking,'-')+1);
             $orderId = $this->getOrderId($shipmentId);
             $url = $this->url->getUrl('shipping/convertShipment',['shipmentId'=> $shipmentId, 'order_id' => $orderId]);
             $status->setCarrierTitle('Your FlagShip shipment is still Unconfirmed');
         }
-        
-        if(stristr($tracking, 'Unconfirmed') === false ){ //shipment confirmed
+
+        if(stripos($tracking, 'Free Shipping') === false && stristr($tracking, 'Unconfirmed') === false ){ //shipment confirmed
             $shipment = $this->getShipmentFromFlagship($tracking);
             $status->setCarrierTitle($shipment->getCourierDescription());
             $courierName = $shipment->getCourierName();
             $trackingNumber = $shipment->getTrackingNumber();
             $url = $this->getTrackingUrl($courierName, $trackingNumber);
         }
+
+        if(stripos($tracking, 'Free Shipping') !== false){
+            $url = 'https://www.flagshipcompany.com';
+            $status->setCarrierTitle('Free Shipping');
+        }
+        
         $status->setTracking($tracking);
         $status->setUrl($url);
         $result->append($status);
@@ -248,7 +255,7 @@ class FlagshipQuote
         return $orderItems[$sourceCode];
     }
 
-    protected function getBoxesTotalFromPayload(array $payload){
+    protected function getBoxesTotalFromPayload(array $payload) : float {
         $items = $payload["packages"]["items"];
         $boxes = $this->packing->getBoxesWithPrices();
         $total = 0.00;
@@ -333,7 +340,7 @@ class FlagshipQuote
         $method = $this->_rateMethodFactory->create();
         $carrier = $ltlFlag ? self::SHIPPING_CODE : 'logistics' ;
         $method->setCarrier($carrier);
-        $method->setCarrierTitle('Method not available for checkout');
+        $method->setCarrierTitle('No quotes available for LTL');
         $method->setMethod('logistics');
         $method->setMethodTitle('Logistics');
         $amount = 0.00;
@@ -390,6 +397,9 @@ class FlagshipQuote
                 $result->append($this->prepareShippingMethods($rate,$boxesTotal));
             }
 
+            if($this->getConfigData('free_shipping')){
+                $result->append($this->prepareFreeShippingMethod());
+            }
             return $result;
         }
         catch(\Magento\Framework\Exception\LocalizedException $e){
@@ -399,6 +409,22 @@ class FlagshipQuote
             $result->append($error);
             return $result;
         }
+    }
+
+    protected function prepareFreeShippingMethod()
+    {
+        $method = $this->_rateMethodFactory->create();
+        $method->setCarrier(self::SHIPPING_CODE);
+        $method->setCarrierTitle('');
+        $method->setMethod('free_shipping');
+        $method->setMethodTitle('Free Shipping');
+        
+        $amount = 0.00;
+
+        $method->setPrice($amount);
+        $method->setCost($amount);
+        $this->flagship->logInfo('Prepared rate for free shipping');
+        return $method;
     }
 
     protected function getAllowedMethodsArray(\Flagship\Shipping\Collections\AvailableServicesCollection $services) : array {
@@ -424,7 +450,7 @@ class FlagshipQuote
         $method = $this->_rateMethodFactory->create();
         $method->setCarrier($rate['details']['carrier']);
         $method->setCarrierTitle($rate['details']['carrier_title']);
-        $methodTitle = $rate['details']['method_title'];
+        $methodTitle = $rate['details']['carrier_title'].' '.$rate['details']['method_title'];
         $method->setMethod($rate['details']['method']);
         if($this->getConfigData('delivery_date')){
             $methodTitle .= ' (Estimated delivery date: '.$rate['details']['estimated_delivery_date'].')';
@@ -439,9 +465,12 @@ class FlagshipQuote
         if($flatFee > 0){
             $amount += $flatFee;
         }
-        $shipmentTax = array_sum($rate['taxesTotal']);
-        $amount += $shipmentTax;
 
+        if($this->getConfigData('taxes_included')){
+            $shipmentTax = array_sum($rate['taxesTotal']);
+            $amount += $shipmentTax;
+        }
+        
         $amount += array_sum($boxesTotal);
 
         $method->setPrice($amount);
