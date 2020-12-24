@@ -528,6 +528,7 @@ class FlagshipQuote
             "country"=> $request->getDestCountryId(),
             "state"=> $request->getDestRegionCode(),
             "postal_code"=> $request->getDestPostcode(),
+            "address" => $request->getDestStreet(),
             "is_commercial"=>false
         ];
         $to = $this->setResidentialFlag($to);
