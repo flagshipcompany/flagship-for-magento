@@ -108,27 +108,27 @@ class FlagshipQuote
         $result = $this->_trackFactory->create();
         $status = $this->_trackStatusFactory->create();
         $status->setCarrier($this->getCarrierCode());
-    
         if(stristr($tracking, 'Unconfirmed') !== false ){
             $shipmentId = substr($tracking,strpos($tracking,'-')+1);
             $orderId = $this->getOrderId($shipmentId);
             $url = $this->url->getUrl('shipping/convertShipment',['shipmentId'=> $shipmentId, 'order_id' => $orderId]);
             $status->setCarrierTitle('Your FlagShip shipment is still Unconfirmed');
         }
-
-        if(stripos($tracking, 'Free Shipping') === false && stristr($tracking, 'Unconfirmed') === false ){ //shipment confirmed
+        if($tracking == 'Distribution'){
+            $tracking = 'Contact FlagShip for tracking';
+            $url = 'https://www.flagshipcompany.com';
+            $status->setTracking($tracking);
+            $status->setUrl($url);
+            $result->append($status);
+            return $result;
+        }
+        if(stristr($tracking, 'Unconfirmed') === false ){ //shipment confirmed
             $shipment = $this->getShipmentFromFlagship($tracking);
             $status->setCarrierTitle($shipment->getCourierDescription());
             $courierName = $shipment->getCourierName();
             $trackingNumber = $shipment->getTrackingNumber();
             $url = $this->getTrackingUrl($courierName, $trackingNumber);
         }
-
-        if(stripos($tracking, 'Free Shipping') !== false){
-            $url = 'https://www.flagshipcompany.com';
-            $status->setCarrierTitle('Free Shipping');
-        }
-        
         $status->setTracking($tracking);
         $status->setUrl($url);
         $result->append($status);
@@ -255,7 +255,7 @@ class FlagshipQuote
         return $orderItems[$sourceCode];
     }
 
-    protected function getBoxesTotalFromPayload(array $payload) : float {
+    protected function getBoxesTotalFromPayload(array $payload){
         $items = $payload["packages"]["items"];
         $boxes = $this->packing->getBoxesWithPrices();
         $total = 0.00;
@@ -340,7 +340,7 @@ class FlagshipQuote
         $method = $this->_rateMethodFactory->create();
         $carrier = $ltlFlag ? self::SHIPPING_CODE : 'logistics' ;
         $method->setCarrier($carrier);
-        $method->setCarrierTitle('No quotes available for LTL');
+        $method->setCarrierTitle('Method not available for checkout');
         $method->setMethod('logistics');
         $method->setMethodTitle('Logistics');
         $amount = 0.00;
@@ -369,12 +369,12 @@ class FlagshipQuote
             $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['taxesTotal'][] = $quote->gettaxesTotal();
             $courierName = $quote->rate->service->courier_name === 'FedEx' ? $quote->rate->service->courier_name.' '.$quote->rate->service->courier_desc : $quote->rate->service->courier_desc;
             $carrier = in_array($courierName, $this->getAllowedMethods()) ? self::SHIPPING_CODE : $quote->rate->service->courier_desc;
-            $methodTitle = substr($courierName, strpos($courierName,' '));
+            // $methodTitle = substr($courierName, strpos($courierName,' '));
             $rates[$quote->rate->service->courier_name.' - '.$quote->rate->service->courier_desc]['details'] = [
                 'carrier' => $carrier,
                 'carrier_title' => $quote->rate->service->courier_name,
                 'method' => $quote->rate->service->courier_code,
-                'method_title' => $methodTitle,
+                'method_title' => $courierName,
                 'estimated_delivery_date' => $quote->rate->service->estimated_delivery_date,
                 'subtotal' => $quote->rate->price->subtotal,
                 'total' => $quote->rate->price->total
@@ -397,9 +397,7 @@ class FlagshipQuote
                 $result->append($this->prepareShippingMethods($rate,$boxesTotal));
             }
 
-            if($this->getConfigData('free_shipping')){
-                $result->append($this->prepareFreeShippingMethod());
-            }
+            $result->append($this->prepareDistributionMethod());
             return $result;
         }
         catch(\Magento\Framework\Exception\LocalizedException $e){
@@ -411,19 +409,20 @@ class FlagshipQuote
         }
     }
 
-    protected function prepareFreeShippingMethod()
+    protected function prepareDistributionMethod() : \Magento\Quote\Model\Quote\Address\RateResult\Method
     {
         $method = $this->_rateMethodFactory->create();
-        $method->setCarrier(self::SHIPPING_CODE);
-        $method->setCarrierTitle('');
-        $method->setMethod('free_shipping');
-        $method->setMethodTitle('Free Shipping');
-        
+        $carrier = $this->moduleManager->isEnabled('Flagship_Fulfillment') ? self::SHIPPING_CODE : 'distribution' ;
+        $method->setCarrier($carrier);
+        $method->setCarrierTitle('Method not available for checkout');
+        $method->setMethod('distribution');
+        $method->setMethodTitle('Distribution');
         $amount = 0.00;
-
         $method->setPrice($amount);
         $method->setCost($amount);
-        $this->flagship->logInfo('Prepared rate for free shipping');
+        $this->flagship->logInfo('Prepared distribution method');
+        $this->flagship->logInfo($carrier);
+
         return $method;
     }
 
@@ -450,7 +449,7 @@ class FlagshipQuote
         $method = $this->_rateMethodFactory->create();
         $method->setCarrier($rate['details']['carrier']);
         $method->setCarrierTitle($rate['details']['carrier_title']);
-        $methodTitle = $rate['details']['carrier_title'].' '.$rate['details']['method_title'];
+        $methodTitle = $rate['details']['method_title'];
         $method->setMethod($rate['details']['method']);
         if($this->getConfigData('delivery_date')){
             $methodTitle .= ' (Estimated delivery date: '.$rate['details']['estimated_delivery_date'].')';
@@ -465,12 +464,9 @@ class FlagshipQuote
         if($flatFee > 0){
             $amount += $flatFee;
         }
+        $shipmentTax = array_sum($rate['taxesTotal']);
+        $amount += $shipmentTax;
 
-        if($this->getConfigData('taxes_included')){
-            $shipmentTax = array_sum($rate['taxesTotal']);
-            $amount += $shipmentTax;
-        }
-        
         $amount += array_sum($boxesTotal);
 
         $method->setPrice($amount);
@@ -528,7 +524,6 @@ class FlagshipQuote
             "country"=> $request->getDestCountryId(),
             "state"=> $request->getDestRegionCode(),
             "postal_code"=> $request->getDestPostcode(),
-            "address" => substr($request->getDestStreet(),0,29),
             "is_commercial"=>false
         ];
         $to = $this->setResidentialFlag($to);

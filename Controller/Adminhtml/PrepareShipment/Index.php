@@ -381,8 +381,8 @@ class Index extends \Magento\Backend\App\Action
 
         $to = [
           'name' => $name,
-          'attn' => $attn,
-          'address' => $shippingAddress->getStreet()[0],
+          'attn' => substr($attn,0,20),
+          'address' => substr($shippingAddress->getStreet()[0],0,29),
           'suite' => $suite,
           'city' => $shippingAddress->getCity(),
           'country' => $shippingAddress->getCountryId(),
@@ -468,8 +468,8 @@ class Index extends \Magento\Backend\App\Action
 
         $from = [
           'name' => $name,
-          'attn' => $name,
-          'address' => $address,
+          'attn' => substr($name,0,20),
+          'address' => substr($address,0,29),
           'suite' => $suite,
           'city' => $city,
           'country' => $country,

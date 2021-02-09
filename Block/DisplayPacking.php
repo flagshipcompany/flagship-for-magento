@@ -23,7 +23,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         \Magento\Framework\Message\ManagerInterface $messageManager,
         \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
         \Magento\Catalog\Model\ProductRepository $productRepository,
-        \Flagship\Shipping\Model\AddBoxes $boxes
+        \Flagship\Shipping\Model\AddBoxes $boxes,
+        \Magento\Sales\Model\Order\ItemRepository $orderItemRepository
     ){
         parent::__construct($context);
         $this->resource = $resource;
@@ -38,6 +39,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $this->getSourceCodeByShipmentId = $getSourceCodeByShipmentId;
         $this->productRepository = $productRepository;
         $this->boxes = $boxes;
+        $this->orderItemRepository = $orderItemRepository;
     }
 
     public function getPacking(int $shipmentId=0) : ?array {
@@ -181,7 +183,9 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template{
         $sourceCode = $this->getSourceCodeByShipmentId->execute($shipmentId);
 
         foreach ($items as $item) {
-            $orderItem = $item->getOrderItem();
+            $orderItemId = $item->getOrderItemId();
+            $orderItem = $this->orderItemRepository->get($orderItemId);
+            //$item->getOrderItem();
             $shipmentItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
 
             if($orderItem->getProductType() != 'configurable') $shipmentItems[$sourceCode]['items'][] = $orderItem;
