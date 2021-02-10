@@ -25,7 +25,7 @@
     <dataSource name="shipping_listboxes_data_source">
         <argument name="dataProvider" xsi:type="configurableObject">
             <!-- unique name for the grid -->
-            <argument name="class" xsi:type="string">ShippingGridDataProvider</argument>
+            <argument name="class" xsi:type="string">Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider</argument>
             <!-- name of the data source same as in argument/js_config/provider -->
             <argument name="name" xsi:type="string">shipping_listboxes_listing_data_source</argument>
             <argument name="primaryFieldName" xsi:type="string">id</argument>

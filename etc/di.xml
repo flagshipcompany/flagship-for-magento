@@ -16,22 +16,6 @@
     </type>
 
     <!-- Virtual Classes For Grids  -->
-    <virtualType name="ShippingGridDataProvider" type="Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider">
-        <arguments>
-            <argument name="collection" xsi:type="object" shared="false">Flagship\Shipping\Model\ResourceModel\AddBoxes\Collection</argument>
-            <argument name="filterPool" xsi:type="object" shared="false">ShippingGridFilterPool</argument>
-        </arguments>
-    </virtualType>
-
-    <virtualType name="ShippingGridFilterPool" type="Magento\Framework\View\Element\UiComponent\DataProvider\FilterPool">
-        <arguments>
-            <argument name="appliers" xsi:type="array">
-                <item name="regular" xsi:type="object">Magento\Framework\View\Element\UiComponent\DataProvider\RegularFilter</item>
-                <item name="fulltext" xsi:type="object">Magento\Framework\View\Element\UiComponent\DataProvider\FulltextFilter</item>
-            </argument>
-        </arguments>
-    </virtualType>
-
     <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
         <arguments>
             <argument name="collections" xsi:type="array">
