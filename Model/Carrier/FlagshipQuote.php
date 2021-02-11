@@ -114,14 +114,6 @@ class FlagshipQuote
             $url = $this->url->getUrl('shipping/convertShipment',['shipmentId'=> $shipmentId, 'order_id' => $orderId]);
             $status->setCarrierTitle('Your FlagShip shipment is still Unconfirmed');
         }
-        if($tracking == 'Distribution'){
-            $tracking = 'Contact FlagShip for tracking';
-            $url = 'https://www.flagshipcompany.com';
-            $status->setTracking($tracking);
-            $status->setUrl($url);
-            $result->append($status);
-            return $result;
-        }
         if(stristr($tracking, 'Unconfirmed') === false ){ //shipment confirmed
             $shipment = $this->getShipmentFromFlagship($tracking);
             $status->setCarrierTitle($shipment->getCourierDescription());
@@ -396,8 +388,6 @@ class FlagshipQuote
             foreach ($rates as $rate) {
                 $result->append($this->prepareShippingMethods($rate,$boxesTotal));
             }
-
-            $result->append($this->prepareDistributionMethod());
             return $result;
         }
         catch(\Magento\Framework\Exception\LocalizedException $e){
@@ -407,23 +397,6 @@ class FlagshipQuote
             $result->append($error);
             return $result;
         }
-    }
-
-    protected function prepareDistributionMethod() : \Magento\Quote\Model\Quote\Address\RateResult\Method
-    {
-        $method = $this->_rateMethodFactory->create();
-        $carrier = $this->moduleManager->isEnabled('Flagship_Fulfillment') ? self::SHIPPING_CODE : 'distribution' ;
-        $method->setCarrier($carrier);
-        $method->setCarrierTitle('Method not available for checkout');
-        $method->setMethod('distribution');
-        $method->setMethodTitle('Distribution');
-        $amount = 0.00;
-        $method->setPrice($amount);
-        $method->setCost($amount);
-        $this->flagship->logInfo('Prepared distribution method');
-        $this->flagship->logInfo($carrier);
-
-        return $method;
     }
 
     protected function getAllowedMethodsArray(\Flagship\Shipping\Collections\AvailableServicesCollection $services) : array {
