@@ -469,7 +469,7 @@ class FlagshipQuote
             $from_postcode = $this->_scopeConfig->getValue('general/store_information/postcode',\Magento\Store\Model\ScopeInterface::SCOPE_STORE);
         }
         $from = [
-            "city"  => $from_city,
+            "city"  => substr($from_city,0,29),
             "country"   => $from_country,
             "state" => $from_state,
             "postal_code"   => $from_postcode,
@@ -481,7 +481,7 @@ class FlagshipQuote
     protected function getReceiverAddress(?RateRequest $request, array $destinationAddress = null) : array {
         if($request == NULL && $destinationAddress != NULL){
             $to = [
-                "city" => $destinationAddress['city'],
+                "city" => substr($destinationAddress['city'],0,29),
                 "country"=> $destinationAddress['country'],
                 "state"=> $destinationAddress['state'],
                 "postal_code"=> $destinationAddress['postal_code'],
@@ -493,7 +493,7 @@ class FlagshipQuote
 
         $toCity = empty($request->getDestCity()) ? 'Toronto' : $request->getDestCity();
         $to = [
-            "city" => $toCity,
+            "city" => substr($toCity,0,29),
             "country"=> $request->getDestCountryId(),
             "state"=> $request->getDestRegionCode(),
             "postal_code"=> $request->getDestPostcode(),

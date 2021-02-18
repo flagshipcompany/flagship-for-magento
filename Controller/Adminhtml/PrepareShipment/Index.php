@@ -380,11 +380,11 @@ class Index extends \Magento\Backend\App\Action
         $attn = strlen($shippingAddress->getFirstName().' '.$shippingAddress->getLastName()) > 21 ? $shippingAddress->getFirstName() : $shippingAddress->getFirstName().' '.$shippingAddress->getLastName();
 
         $to = [
-          'name' => $name,
+          'name' => substr($name,0,29),
           'attn' => substr($attn,0,20),
           'address' => substr($shippingAddress->getStreet()[0],0,29),
-          'suite' => $suite,
-          'city' => $shippingAddress->getCity(),
+          'suite' => substr($suite,0,17),
+          'city' => substr($shippingAddress->getCity(),0,29),
           'country' => $shippingAddress->getCountryId(),
           'state' => $this->getStateCode( $shippingAddress->getRegionId() ),
           'postal_code' => $shippingAddress->getPostCode(),
@@ -458,7 +458,7 @@ class Index extends \Magento\Backend\App\Action
         $stateCode = !is_null($source) && !is_null($source->getRegionId()) ? $source->getRegionId() : $store->getConfig('general/store_information/region_id');
         $state = empty($stateCode) ? $stateCode : $this->getStateCode($stateCode);
 
-        $name  = !is_null($source) && !is_null($source->getName()) ? substr($source->getName(),0,25) : substr($store->getConfig('general/store_information/name'),0,25);
+        $name  = !is_null($source) && !is_null($source->getName()) ? substr($source->getName(),0,29) : substr($store->getConfig('general/store_information/name'),0,29);
         $attn =!is_null($source) && !is_null($source->getContactName()) ? substr($source->getContactName(),0,20) : substr($name,0,20);
         $address = !is_null($source) && !is_null($source->getStreet()) ? $source->getStreet() : $store->getConfig('general/store_information/street_line1');
         $suite = is_null($store->getConfig('general/store_information/street_line2')) ? '' : $store->getConfig('general/store_information/street_line2');
@@ -467,11 +467,11 @@ class Index extends \Magento\Backend\App\Action
         $phone = !is_null($source) && !is_null($source->getPhone()) ? $source->getPhone() : $store->getConfig('general/store_information/phone');
 
         $from = [
-          'name' => $name,
+          'name' => substr($name,0,29),
           'attn' => substr($name,0,20),
           'address' => substr($address,0,29),
-          'suite' => $suite,
-          'city' => $city,
+          'suite' => substr($suite,0,17),
+          'city' => substr($city,0,29),
           'country' => $country,
           'state' => $state,
           'postal_code' => $postcode,
