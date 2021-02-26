@@ -50,7 +50,7 @@ class Index extends \Magento\Backend\App\Action{
             $this->flagship->logInfo('Token saved');
             return $this->_redirect($this->_redirect->getRefererUrl($this->messageManager->addSuccessMessage( __('Success! API Token saved'))));
         }
-        $this->flagship->logInfo($token.' is an invalid token');
+        $this->flagship->logInfo(substr($token,0,20).'... is an invalid token. It could be that the api environment is different from the token environment');
         return $this->_redirect($this->_redirect->getRefererUrl($this->messageManager->addErrorMessage( __('Invalid API Token'))));
     }
 
