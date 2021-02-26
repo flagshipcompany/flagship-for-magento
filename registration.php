@@ -9,5 +9,5 @@ ComponentRegistrar::register(
 );
 require BP.'/vendor/autoload.php';
 
-define('FLAGSHIP_MODULE','Magento');
-define('FLAGSHIP_MODULE_VERSION','1.0.47');
+define('FLAGSHIP_MODULE', 'Magento');
+define('FLAGSHIP_MODULE_VERSION', '1.0.48');
