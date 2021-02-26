@@ -111,18 +111,23 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $result = $this->_trackFactory->create();
         $status = $this->_trackStatusFactory->create();
         $status->setCarrier($this->getCarrierCode());
+        
         if (stristr($tracking, 'Unconfirmed') !== false) {
             $shipmentId = substr($tracking, strpos($tracking, '-')+1);
             $orderId = $this->getOrderId($shipmentId);
             $url = $this->url->getUrl('shipping/convertShipment', ['shipmentId'=> $shipmentId, 'order_id' => $orderId]);
             $status->setCarrierTitle('Your FlagShip shipment is still Unconfirmed');
         }
-        if (stristr($tracking, 'Unconfirmed') === false) { //shipment confirmed
+        if (stristr($tracking, 'Unconfirmed') === false && stristr($tracking, 'Free Shipping') == false) { //shipment confirmed
             $shipment = $this->getShipmentFromFlagship($tracking);
             $status->setCarrierTitle($shipment->getCourierDescription());
             $courierName = $shipment->getCourierName();
             $trackingNumber = $shipment->getTrackingNumber();
             $url = $this->getTrackingUrl($courierName, $trackingNumber);
+        }
+
+        if (stristr($tracking, 'Unconfirmed') === false && stristr($tracking, 'Free Shipping') !== false) {
+            $url = 'https://www.flagshipcompany.com'; 
         }
         $status->setTracking($tracking);
         $status->setUrl($url);
