@@ -127,7 +127,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         }
 
         if (stristr($tracking, 'Unconfirmed') === false && stristr($tracking, 'Free Shipping') !== false) {
-            $url = 'https://www.flagshipcompany.com'; 
+            $url = 'https://www.flagshipcompany.com';
         }
         $status->setTracking($tracking);
         $status->setUrl($url);
@@ -297,6 +297,11 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         if (count($sourceCodes) < 1) {
             $sourceCodes = $this->getSourceCodesBySkus->execute([$sku]);
         }
+        // If there are no sources, return the default source. This is useful for test stores or products not properly configured.
+        if (count($sourceCodes) === 0) {
+            $sourceCodes = ['default'];
+        }
+
         return $sourceCodes;
     }
 
