@@ -1,13 +1,14 @@
 <?php
+
 namespace Flagship\Shipping\Controller\Adminhtml\PrepareShipment;
-use \Flagship\Shipping\Flagship;
-use \Flagship\Shipping\Exceptions\PrepareShipmentException;
-use \Flagship\Shipping\Exceptions\EditShipmentException;
-use \Flagship\Shipping\Block\DisplayPacking;
+
+use Flagship\Shipping\Exceptions\EditShipmentException;
+use Flagship\Shipping\Exceptions\PrepareShipmentException;
+use Flagship\Shipping\Flagship;
+use Flagship\Shipping\Model\Carrier\FlagshipQuote;
 
 class Index extends \Magento\Backend\App\Action
-  {
-
+{
     protected $orderId;
     protected $orderRepository;
     protected $scopeConfig;
@@ -18,6 +19,7 @@ class Index extends \Magento\Backend\App\Action
     protected $loggingEnabled;
     protected $displayPackings;
     protected $flagship;
+    protected $productRepository;
 
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
@@ -37,9 +39,9 @@ class Index extends \Magento\Backend\App\Action
         \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
         \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
         \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
-        \Flagship\Shipping\Model\Carrier\FlagshipQuote $flagshipQuote
-    )
-    {
+        \Flagship\Shipping\Model\Carrier\FlagshipQuote $flagshipQuote,
+        \Magento\Catalog\Model\ProductRepository $productRepository,
+    ) {
         $this->orderRepository = $orderRepository;
         $this->scopeConfig = $scopeConfig;
         $this->regionFactory = $regionFactory;
@@ -48,7 +50,7 @@ class Index extends \Magento\Backend\App\Action
         $this->_logger = $logger;
         $this->displayPackings = $displayPackings;
         $this->flagship = $flagship;
-        $this->loggingEnabled = array_key_exists('log',$this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1 ;
+        $this->loggingEnabled = array_key_exists('log', $this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1;
         $this->getSalableQuantityDataBySku = $getSalableQuantityDataBySku;
         $this->getSourceCodesBySkus = $getSourceCodesBySkus;
         $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
@@ -58,126 +60,134 @@ class Index extends \Magento\Backend\App\Action
         $this->transportBuilder = $transportBuilder;
         $this->getSourceCodeByShipmentId = $getSourceCodeByShipmentId;
         $this->flagshipQuote = $flagshipQuote;
+        $this->productRepository = $productRepository;
         parent::__construct($context);
     }
 
-    public function execute(){
-
+    public function execute()
+    {
         $update = is_null($this->getRequest()->getParam('update')) ? 0 : $this->getRequest()->getParam('update');
         $token = $this->getToken();
-        $flagship = new Flagship($token,SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
+        $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
 
         $orderId = $this->getRequest()->getParam('order_id');
 
-        if($update){
+        if ($update) {
             $shipmentId = $this->getRequest()->getParam('shipmentId');
-            $payload = $this->getUpdatePayload($flagship,$shipmentId);
+            $payload = $this->getUpdatePayload($flagship, $shipmentId);
 
-            $this->flagship->logInfo('Updating FlagShip Shipment#'.$shipmentId.' for Order#'.$orderId);
-            $this->updateShipment($flagship,$payload,$shipmentId);
+            $this->flagship->logInfo('Updating FlagShip Shipment#' . $shipmentId . ' for Order#' . $orderId);
+            $this->updateShipment($flagship, $payload, $shipmentId);
             return $this->_redirect($this->_redirect->getRefererUrl());
         }
 
         $orderItems = $this->getSourceCodesForOrderItems();
         $shippingMethod = $this->getOrder()->getShippingMethod();
-        $isLogistics = stripos($shippingMethod,'logistics');
-        $ltlEmail = explode(",",$this->scopeConfig->getValue('carriers/flagship/ltl_email'));
+        $isLogistics = stripos($shippingMethod, 'logistics');
+        $ltlEmail = explode(",", $this->scopeConfig->getValue('carriers/flagship/ltl_email'));
         $shipAsIsProducts = [];
 
-        if($isLogistics !== FALSE && !is_null($ltlEmail)){
-            $this->createLogisticsShipment($ltlEmail,$orderItems);
+        if ($isLogistics !== false && !is_null($ltlEmail)) {
+            $this->createLogisticsShipment($ltlEmail, $orderItems);
             return $this->_redirect($this->_redirect->getRefererUrl());
         }
 
-        $this->flagship->logInfo('Preparing FlagShip Shipment for Order#'.$orderId);
+        $this->flagship->logInfo('Preparing FlagShip Shipment for Order#' . $orderId);
 
         foreach ($orderItems as $orderItem) {
             $payload = $this->getPayload($orderItem);
-            $this->prepareShipment($flagship,$payload,$orderItem);
+            $this->prepareShipment($flagship, $payload, $orderItem);
         }
         $this->getOrder()->setIsInProcess(true)->save();
-        return $this->_redirect($this->getUrl('sales/order/view',['order_id' => $orderId]));
+        return $this->_redirect($this->getUrl('sales/order/view', ['order_id' => $orderId]));
     }
 
-    public function getToken() : ?string {
+    public function getToken() : ?string
+    {
         return $this->flagship->getSettings()["token"];
     }
 
-    public function getOrder() : \Magento\Sales\Model\Order {
+    public function getOrder() : \Magento\Sales\Model\Order
+    {
         $this->orderId = $this->getRequest()->getParam('order_id');
         $order = $this->orderRepository->get($this->orderId);
         $this->order = $order;
         return $order;
     }
 
-    public function getSourceCodesForOrderItems() : array {
+    public function getSourceCodesForOrderItems() : array
+    {
         $items = $this->getOrder()->getAllItems();
         $sku = null;
         $orderItems = [];
         $destinationAddressForSourceSelection = $this->getDestinationAddress();
 
         foreach ($items as $item) {
-            $sku = strcasecmp($item->getProductType(),'configurable') == 0 ? $item->getProductOptions()["simple_sku"] : $item->getProduct()->getSku();
+            $prodId = $item->getProduct()->getId();
+            $sku = strcasecmp($item->getProductType(), 'configurable') == 0
+                ? $item->getProductOptions()["simple_sku"] :
+                $this->productRepository->getById($prodId)->getSku();
 
             $sourceCodes = $this->getSourceCodesBySkus->execute([$sku]);
 
-            $sourceCode = $this->flagshipQuote->getOptimumSource($sourceCodes,null,$item,$destinationAddressForSourceSelection);
+            $sourceCode = $this->flagshipQuote->getOptimumSource($sourceCodes, null, $item, $destinationAddressForSourceSelection);
 
-            $orderItems[$sourceCode] = $this->skipIfItemIsDownloadable($orderItems,$sourceCode,$item);
+            $orderItems[$sourceCode] = $this->skipIfItemIsDownloadable($orderItems, $sourceCode, $item);
         }
         return $orderItems;
     }
 
-    protected function skipIfItemIsDownloadable(array $orderItems,string $sourceCode,\Magento\Sales\Model\Order\Item $item) : array {
+    protected function skipIfItemIsDownloadable(array $orderItems, string $sourceCode, \Magento\Sales\Model\Order\Item $item) : array
+    {
         $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
-        if( $item->getProductType() != 'downloadable'){
+        if ($item->getProductType() != 'downloadable') {
             $orderItems[$sourceCode]['items'][] = $item;
         }
         return $orderItems[$sourceCode];
     }
 
-    protected function getDestinationAddress() : array {
+    protected function getDestinationAddress() : array
+    {
         $shippingAddress = $this->getShippingAddress();
 
         $destinationAddress = [
             'city' => $shippingAddress->getCity(),
             'country' => $shippingAddress->getCountryId(),
-            'state' => $this->getStateCode( $shippingAddress->getRegionId() ),
+            'state' => $this->getStateCode($shippingAddress->getRegionId()),
             'postal_code' => $shippingAddress->getPostCode(),
       ];
 
-      return $destinationAddress;
-
+        return $destinationAddress;
     }
 
-    protected function getShipAsIsProducts($orderItems){
+    protected function getShipAsIsProducts($orderItems)
+    {
         $shipAsIsProducts = [];
         foreach ($orderItems['items'] as $item) {
-            if($item->getProduct()->getDataByKey('ship_as_is') == 1){
+            if ($item->getProduct()->getDataByKey('ship_as_is') == 1) {
                 $shipAsIsProducts[] = $item->getProduct();
             }
         }
         return $shipAsIsProducts;
     }
 
-    public function getPayload(array $orderItem) : array {
+    public function getPayload(array $orderItem) : array
+    {
         $store = $this->getStore();
         $source = $orderItem['source'];
 
-        $from = $this->getSender($source,$store);
+        $from = $this->getSender($source, $store);
         $to = $this->getReceiver($store);
         $this->shipAsIsProducts = [];
 
-        if(array_key_exists('items', $orderItem))
-        {
+        if (array_key_exists('items', $orderItem)) {
             $this->addShipAsIsPackages($orderItem['items']);
         }
 
         $packages = $this->getPackages($orderItem);
-        if(count($this->shipAsIsProducts) > 0){
+        if (count($this->shipAsIsProducts) > 0) {
             $packages = $this->getPackagesForShipAsIsProducts($packages);
         }
-
 
         $options = $this->getOptions($store);
 
@@ -194,13 +204,13 @@ class Index extends \Magento\Backend\App\Action
         return $payload;
     }
 
-    protected function getPackagesForShipAsIsProducts(array $packages){
-
+    protected function getPackagesForShipAsIsProducts(array $packages)
+    {
         foreach ($this->shipAsIsProducts as $value) {
             $product = $value->getProduct();
-            $length = $product->getDataByKey('ts_dimensions_length') == NULL ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
-            $width = $product->getDataByKey('ts_dimensions_width') == NULL ? ceil($product->getDataByKey('width')) : ceil($product->getDataByKey('ts_dimensions_width'));
-            $height = $product->getDataByKey('ts_dimensions_height') == NULL ? ceil($product->getDataByKey('height')) : ceil($product->getDataByKey('ts_dimensions_height'));
+            $length = $product->getDataByKey('ts_dimensions_length') == null ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
+            $width = $product->getDataByKey('ts_dimensions_width') == null ? ceil($product->getDataByKey('width')) : ceil($product->getDataByKey('ts_dimensions_width'));
+            $height = $product->getDataByKey('ts_dimensions_height') == null ? ceil($product->getDataByKey('height')) : ceil($product->getDataByKey('ts_dimensions_height'));
 
             $packages['items'][] = [
                 'description' => $product->getName(),
@@ -213,24 +223,27 @@ class Index extends \Magento\Backend\App\Action
         return $packages;
     }
 
-    protected function addShipAsIsPackages($orderItems){
+    protected function addShipAsIsPackages($orderItems)
+    {
         foreach ($orderItems as $orderItem) {
             $this->getShipAsIsProductsArray($orderItem);
         }
     }
 
-    protected function getShipAsIsProductsArray($orderItem){
-        if($orderItem->getProduct()->getDataByKey('ship_as_is') == 1){
+    protected function getShipAsIsProductsArray($orderItem)
+    {
+        if ($orderItem->getProduct()->getDataByKey('ship_as_is') == 1) {
             $this->shipAsIsProducts[] = $orderItem;
             unset($orderItem);
         }
     }
 
-    public function getPackages(array $orderItem) : array {
+    public function getPackages(array $orderItem) : array
+    {
         $items = array_key_exists('items', $orderItem) ? $orderItem['items'] : [];
         $packageItems = [];
         foreach ($items as $item) {
-            $packageItems = $this->getPackageItems($item,$packageItems);
+            $packageItems = $this->getPackageItems($item, $packageItems);
         }
 
         $packages = [
@@ -238,31 +251,30 @@ class Index extends \Magento\Backend\App\Action
           'type' => 'package',
           'items' => $packageItems
         ];
-        if($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes($orderItem['source']->getSourceCode()))){
+        if ($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes($orderItem['source']->getSourceCode()))) {
             $packages['items'] = $this->getPayloadItems($orderItem);
         }
 
         return $packages;
     }
 
-    public function getStateCode(int $regionId) : string {
+    public function getStateCode(int $regionId) : string
+    {
         $state = $this->regionFactory->create()->load($regionId);
         $stateCode = $state->getCode();
         return $stateCode;
     }
 
-    public function createShipment(int $flagship_shipment_id,array $orderItem,int $confirmed = 0) : \Magento\Sales\Model\Order\Shipment {
-
+    public function createShipment(int $flagship_shipment_id, array $orderItem, int $confirmed = 0) : \Magento\Sales\Model\Order\Shipment
+    {
         $order = $this->getOrder();
 
         $shipment = $this->convertOrder->toShipment($order);
 
-        foreach($orderItem['items'] as $item){
-
-            $qtyShipped = $item->getProductType() == 'configurable' && $item->getQtyToShip() == 0 ? $item->getSimpleQtyToShip() :$item->getQtyToShip();
+        foreach ($orderItem['items'] as $item) {
+            $qtyShipped = $item->getProductType() == 'configurable' && $item->getQtyToShip() == 0 ? $item->getSimpleQtyToShip() : $item->getQtyToShip();
             $shipmentItem = $this->convertOrder->itemToShipmentItem($item)->setQty($qtyShipped);
             $shipment->addItem($shipmentItem);
-
         }
 
         $shipment->register();
@@ -271,29 +283,30 @@ class Index extends \Magento\Backend\App\Action
         $shipmentExtension = $shipment->getExtensionAttributes();
         $sourceCode = $orderItem['source']->getSourceCode();
 
-        if(empty($shipmentExtension)){
+        if (empty($shipmentExtension)) {
             $shipmentExtension = $this->shipmentExtensionFactory->create();
         }
 
         $shipmentExtension->setSourceCode($sourceCode);
         $shipment->setExtensionAttributes($shipmentExtension);
-        $shipment->setData('flagship_shipment_id',$flagship_shipment_id);
+        $shipment->setData('flagship_shipment_id', $flagship_shipment_id);
 
-        if($confirmed == 0){
-            $shipment = $this->setTrackingDetails($flagship_shipment_id,$shipment);
+        if ($confirmed == 0) {
+            $shipment = $this->setTrackingDetails($flagship_shipment_id, $shipment);
         }
         return $shipment;
     }
 
-    protected function getSourceForShipment(int $shipmentId) : \Magento\Inventory\Model\Source {
+    protected function getSourceForShipment(int $shipmentId) : \Magento\Inventory\Model\Source
+    {
         $sourceCode = $this->getSourceCodeByShipmentId->execute($shipmentId);
         $source = $this->sourceRepository->get($sourceCode);
         return $source;
     }
 
-    protected function sendLtlEmail(array $ltlEmail,int $shipmentId,string $dimensions,float $totalWeight) : \Magento\Framework\Message\Manager {
-
-        $street = implode(",",$this->order->getShippingAddress()->getStreet());
+    protected function sendLtlEmail(array $ltlEmail, int $shipmentId, string $dimensions, float $totalWeight) : \Magento\Framework\Message\Manager
+    {
+        $street = implode(",", $this->order->getShippingAddress()->getStreet());
         $sourceCode = $this->getSourceCodeByShipmentId->execute($shipmentId);
         $source = $this->getSourceForShipment($shipmentId);
         $this->inlineTranslation->suspend();
@@ -305,9 +318,9 @@ class Index extends \Magento\Backend\App\Action
                 'source' => $source,
                 'regionCode' => $this->getStateCode($source->getRegionId()),
                 'dimensions' => $dimensions,
-                'totalWeight' => $totalWeight.' '.$this->getWeightUnits()
+                'totalWeight' => $totalWeight . ' ' . $this->getWeightUnits()
             ])
-            ->setFrom('general',1)
+            ->setFrom('general', 1)
             ->addTo($ltlEmail)
             ->getTransport();
         $transport->sendMessage();
@@ -315,22 +328,22 @@ class Index extends \Magento\Backend\App\Action
         return $this->messageManager->addSuccess(__('FlagShip logistics request has been created. Please allow us 2 business days to process it. Someone from FlagShip will contact you soon.'));
     }
 
-    protected function createLogisticsShipment(array $ltlEmail,array $orderItems) : int {
-        foreach ($orderItems as $orderItem ) {
-
+    protected function createLogisticsShipment(array $ltlEmail, array $orderItems) : int
+    {
+        foreach ($orderItems as $orderItem) {
             $dimensions = '';
             $totalWeight = 0;
             $units = $this->getPackageUnits() == 'imperial' ? 'inch' : 'cm';
             $items = $this->getLogisticsPackages($orderItem["source"]->getSourceCode());
 
             foreach ($items as $item) {
-                $dimensions .= '<br>'.$item["box_model"].' - '.$item["dimensions"].' '.$units;
+                $dimensions .= '<br>' . $item["box_model"] . ' - ' . $item["dimensions"] . ' ' . $units;
                 $totalWeight += $item["weight"];
             }
 
-            $shipment = $this->createShipment(123456,$orderItem,0);
+            $shipment = $this->createShipment(123456, $orderItem, 0);
 
-            $shipment->setData('flagship_shipment_id',NULL);
+            $shipment->setData('flagship_shipment_id', null);
             $shipment->setStatus(1);
             $track = $shipment->getAllTracks()[0];
             $track->setTrackNumber("Logistics");
@@ -339,32 +352,35 @@ class Index extends \Magento\Backend\App\Action
             $track->save();
             $shipment->save();
             $shipmentId = $shipment->getId();
-            $this->sendLtlEmail($ltlEmail,$shipmentId,$dimensions,$totalWeight);
+            $this->sendLtlEmail($ltlEmail, $shipmentId, $dimensions, $totalWeight);
         }
         return 0;
     }
 
-    protected function getLogisticsPackages(string $sourceCode) : array {
+    protected function getLogisticsPackages(string $sourceCode) : array
+    {
         $items = $this->getLogisticsBoxes($sourceCode);
         return $items;
     }
 
-    protected function getPayment() : array {
+    protected function getPayment() : array
+    {
         $payment = [
           'payer' => 'F'
         ];
         return $payment;
     }
 
-    protected function getOptions(\Magento\Store\Model\Store $store) : array {
+    protected function getOptions(\Magento\Store\Model\Store $store) : array
+    {
         $options = [
           'signature_required' => false,
-          'reference' => 'Magento Order# '.$this->getOrder()->getIncrementId(),
+          'reference' => 'Magento Order# ' . $this->getOrder()->getIncrementId(),
           'address_correction' => true
         ];
 
         $insuranceValue = $this->getInsuranceValue();
-        if($store->getConfig('carriers/flagship/insuranceflag') && $insuranceValue != 0){
+        if ($store->getConfig('carriers/flagship/insuranceflag') && $insuranceValue != 0) {
             $options['insurance'] = [
                 'value' => $insuranceValue,
                 'description' => 'insurance'
@@ -373,38 +389,40 @@ class Index extends \Magento\Backend\App\Action
         return $options;
     }
 
-    protected function getReceiver(\Magento\Store\Model\Store $store) : array {
+    protected function getReceiver(\Magento\Store\Model\Store $store) : array
+    {
         $shippingAddress = $this->getShippingAddress();
-        $suite = isset($shippingAddress->getStreet()[1]) ? $shippingAddress->getStreet()[1] : NULL ;
+        $suite = isset($shippingAddress->getStreet()[1]) ? $shippingAddress->getStreet()[1] : null;
         $name = is_null($shippingAddress->getCompany()) ? $shippingAddress->getFirstName() : $shippingAddress->getCompany();
-        $attn = strlen($shippingAddress->getFirstName().' '.$shippingAddress->getLastName()) > 21 ? $shippingAddress->getFirstName() : $shippingAddress->getFirstName().' '.$shippingAddress->getLastName();
+        $attn = strlen($shippingAddress->getFirstName() . ' ' . $shippingAddress->getLastName()) > 21 ? $shippingAddress->getFirstName() : $shippingAddress->getFirstName() . ' ' . $shippingAddress->getLastName();
 
         $to = [
-          'name' => substr($name,0,29),
-          'attn' => substr($attn,0,20),
-          'address' => substr($shippingAddress->getStreet()[0],0,29),
-          'suite' => substr($suite,0,17),
-          'city' => substr($shippingAddress->getCity(),0,29),
+          'name' => substr($name, 0, 29),
+          'attn' => substr($attn, 0, 20),
+          'address' => substr($shippingAddress->getStreet()[0], 0, 29),
+          'suite' => substr($suite, 0, 17),
+          'city' => substr($shippingAddress->getCity(), 0, 29),
           'country' => $shippingAddress->getCountryId(),
-          'state' => $this->getStateCode( $shippingAddress->getRegionId() ),
+          'state' => $this->getStateCode($shippingAddress->getRegionId()),
           'postal_code' => $shippingAddress->getPostCode(),
           'phone' => $shippingAddress->getTelephone(),
           'is_commercial' => true
         ];
 
-        if($store->getConfig('carriers/flagship/force_residential')){
+        if ($store->getConfig('carriers/flagship/force_residential')) {
             $to['is_commercial'] = false;
         }
         return $to;
     }
 
-    protected function getPackageItems(\Magento\Sales\Model\Order\Item $item,array $packageItems) : array {
+    protected function getPackageItems(\Magento\Sales\Model\Order\Item $item, array $packageItems) : array
+    {
         $qty = $item->getQtyOrdered();
-        $length = $item->getProduct()->getDataByKey('ts_dimensions_length') == NULL ? intval($item->getProduct()->getDataByKey('length')) : intval($item->getProduct()->getDataByKey('ts_dimensions_length'));
-        $width = $item->getProduct()->getDataByKey('ts_dimensions_width') == NULL ? intval($item->getProduct()->getDataByKey('width')) : intval($item->getProduct()->getDataByKey('ts_dimensions_width'));
-        $height = $item->getProduct()->getDataByKey('ts_dimensions_height') == NULL ? intval($item->getProduct()->getDataByKey('height')) : intval($item->getProduct()->getDataByKey('ts_dimensions_height'));
+        $length = $item->getProduct()->getDataByKey('ts_dimensions_length') == null ? intval($item->getProduct()->getDataByKey('length')) : intval($item->getProduct()->getDataByKey('ts_dimensions_length'));
+        $width = $item->getProduct()->getDataByKey('ts_dimensions_width') == null ? intval($item->getProduct()->getDataByKey('width')) : intval($item->getProduct()->getDataByKey('ts_dimensions_width'));
+        $height = $item->getProduct()->getDataByKey('ts_dimensions_height') == null ? intval($item->getProduct()->getDataByKey('height')) : intval($item->getProduct()->getDataByKey('ts_dimensions_height'));
 
-        for($i=0; $i<$qty;$i++){
+        for ($i=0; $i<$qty;$i++) {
             $packageItems[] = [
                 'length' => $length,
                 'width' => $width,
@@ -416,11 +434,12 @@ class Index extends \Magento\Backend\App\Action
         return $packageItems;
     }
 
-    protected function getUpdatePayload(Flagship $flagship,int $shipmentId) : array {
+    protected function getUpdatePayload(Flagship $flagship, int $shipmentId) : array
+    {
         $store = $this->getStore();
         $orderId = $this->getOrder()->getId();
         $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
-        $shipment = $flagship->getShipmentByIdRequest($shipmentId)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view',['order_id' => $orderId]))->execute();
+        $shipment = $flagship->getShipmentByIdRequest($shipmentId)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view', ['order_id' => $orderId]))->execute();
 
         $from = (array)$shipment->shipment->from;
         unset($from['phone_ext']);
@@ -450,16 +469,15 @@ class Index extends \Magento\Backend\App\Action
         return $payload;
     }
 
-    protected function getSender(\Magento\Inventory\Model\Source $source,\Magento\Store\Model\Store $store) : array {
-
-
-        $country = !is_null($source) && !is_null($source->getCountryId()) ? $source->getCountryId() : $store->getConfig('general/store_information/country_id') ;
+    protected function getSender(\Magento\Inventory\Model\Source $source, \Magento\Store\Model\Store $store) : array
+    {
+        $country = !is_null($source) && !is_null($source->getCountryId()) ? $source->getCountryId() : $store->getConfig('general/store_information/country_id');
 
         $stateCode = !is_null($source) && !is_null($source->getRegionId()) ? $source->getRegionId() : $store->getConfig('general/store_information/region_id');
         $state = empty($stateCode) ? $stateCode : $this->getStateCode($stateCode);
 
-        $name  = !is_null($source) && !is_null($source->getName()) ? substr($source->getName(),0,29) : substr($store->getConfig('general/store_information/name'),0,29);
-        $attn =!is_null($source) && !is_null($source->getContactName()) ? substr($source->getContactName(),0,20) : substr($name,0,20);
+        $name  = !is_null($source) && !is_null($source->getName()) ? substr($source->getName(), 0, 29) : substr($store->getConfig('general/store_information/name'), 0, 29);
+        $attn =!is_null($source) && !is_null($source->getContactName()) ? substr($source->getContactName(), 0, 20) : substr($name, 0, 20);
         $address = !is_null($source) && !is_null($source->getStreet()) ? $source->getStreet() : $store->getConfig('general/store_information/street_line1');
         $suite = is_null($store->getConfig('general/store_information/street_line2')) ? '' : $store->getConfig('general/store_information/street_line2');
         $city = !is_null($source) && !is_null($source->getCity()) ? $source->getCity() : $store->getConfig('general/store_information/city');
@@ -467,11 +485,11 @@ class Index extends \Magento\Backend\App\Action
         $phone = !is_null($source) && !is_null($source->getPhone()) ? $source->getPhone() : $store->getConfig('general/store_information/phone');
 
         $from = [
-          'name' => substr($name,0,29),
-          'attn' => substr($name,0,20),
-          'address' => substr($address,0,29),
-          'suite' => substr($suite,0,17),
-          'city' => substr($city,0,29),
+          'name' => substr($name, 0, 29),
+          'attn' => substr($name, 0, 20),
+          'address' => substr($address, 0, 29),
+          'suite' => substr($suite, 0, 17),
+          'city' => substr($city, 0, 29),
           'country' => $country,
           'state' => $state,
           'postal_code' => $postcode,
@@ -480,160 +498,167 @@ class Index extends \Magento\Backend\App\Action
         ];
 
         return $from;
-
     }
 
-    protected function updateShipment(Flagship $flagship, array $payload,int $shipmentId) : \Magento\Framework\Message\Manager {
-        try{
+    protected function updateShipment(Flagship $flagship, array $payload, int $shipmentId) : \Magento\Framework\Message\Manager
+    {
+        try {
             $orderId = $this->getOrder()->getId();
             $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
-            $update = $flagship->editShipmentRequest($payload,$shipmentId)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view',['order_id' => $orderId]));
+            $update = $flagship->editShipmentRequest($payload, $shipmentId)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view', ['order_id' => $orderId]));
             $response = $update->execute();
 
             $id = $response->getId();
             $orderId = $this->getRequest()->getParam('order_id');
             $trackingid = $response->getTrackingNumber();
-            $url = $this->getUrl('shipping/convertShipment',['shipmentId'=> $id, 'order_id' => $orderId]);
-            $this->flagship->logInfo('FlagShip Shipment# '.$id.' associated with Order# '.$orderId.' is Updated. Response Code : '.$update->getResponseCode());
-            return $this->messageManager->addSuccess(__('FlagShip Shipment Updated : <a target="_blank" href="'.$url.'">'.$id.'</a>'));
-        }
-        catch(EditShipmentException $e){
-            $this->flagship->logError($e->getMessage().' Response Code : '.$update->getResponseCode());
+            $url = $this->getUrl('shipping/convertShipment', ['shipmentId'=> $id, 'order_id' => $orderId]);
+            $this->flagship->logInfo('FlagShip Shipment# ' . $id . ' associated with Order# ' . $orderId . ' is Updated. Response Code : ' . $update->getResponseCode());
+            return $this->messageManager->addSuccess(__('FlagShip Shipment Updated : <a target="_blank" href="' . $url . '">' . $id . '</a>'));
+        } catch (EditShipmentException $e) {
+            $this->flagship->logError($e->getMessage() . ' Response Code : ' . $update->getResponseCode());
             return $this->messageManager->addErrorMessage(__(ucfirst($e->getMessage())));
         }
     }
 
-    protected function prepareShipment(Flagship $flagship, array $payload, array $orderItem) : \Magento\Framework\Message\Manager {
-        try{
+    protected function prepareShipment(Flagship $flagship, array $payload, array $orderItem) : \Magento\Framework\Message\Manager
+    {
+        try {
             $orderId = $this->getOrder()->getId();
             $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
-            $request = $flagship->prepareShipmentRequest($payload)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view',['order_id' => $orderId]));
+            $request = $flagship->prepareShipmentRequest($payload)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view', ['order_id' => $orderId]));
             $response = $request->execute();
             $id = $response->shipment->id;
-            $this->setFlagshipShipmentId($id,$orderItem);
+            $this->setFlagshipShipmentId($id, $orderItem);
             $orderId = $this->getRequest()->getParam('order_id');
-            $url = $this->getUrl('shipping/convertShipment',['shipmentId'=> $id, 'order_id' => $orderId]);
-            $this->flagship->logInfo('FlagShip Shipment #'.$id.' prepared for Order# '.$orderId.'. Response Code : '.$request->getResponseCode());
-            return $this->messageManager->addSuccess(__('FlagShip Shipment Number:'.$id.' . Click <a href="'.$url.'">here</a> to confirm the shipment'));
-        }
-        catch(PrepareShipmentException $e){
-            $this->flagship->logError($e->getMessage().'. Response Code : '.$request->getResponseCode());
+            $url = $this->getUrl('shipping/convertShipment', ['shipmentId'=> $id, 'order_id' => $orderId]);
+            $this->flagship->logInfo('FlagShip Shipment #' . $id . ' prepared for Order# ' . $orderId . '. Response Code : ' . $request->getResponseCode());
+            return $this->messageManager->addSuccess(__('FlagShip Shipment Number:' . $id . ' . Click <a href="' . $url . '">here</a> to confirm the shipment'));
+        } catch (PrepareShipmentException $e) {
+            $this->flagship->logError($e->getMessage() . '. Response Code : ' . $request->getResponseCode());
             return $this->messageManager->addErrorMessage(__(ucfirst($e->getMessage())));
         }
     }
 
-    protected function getWeightUnits() : string {
-
+    protected function getWeightUnits() : string
+    {
         $weightUnit = $this->getStore()->getConfig('general/locale/weight_unit');
         return $weightUnit;
     }
 
-    protected function getTotalWeight() : float {
+    protected function getTotalWeight() : float
+    {
         $order = $this->getOrder();
         $items = $order->getAllItems();
         $weight = 0;
-        foreach($items as $item){
+        foreach ($items as $item) {
             $itemWeight = is_null($item->getWeight()) ? 1 : $item->getWeight();
             $weight += ($itemWeight * $item->getQtyToShip());
         }
-        if($weight < 1){
+        if ($weight < 1) {
             return 1;
         }
         return $weight;
     }
 
-    protected function getPackageUnits() : string {
-        if($this->getWeightunits() === 'kgs'){
+    protected function getPackageUnits() : string
+    {
+        if ($this->getWeightunits() === 'kgs') {
             return 'metric';
         }
         return 'imperial';
     }
 
-    protected function setFlagshipShipmentId(int $id,array $orderItem) : int {
-        if(array_key_exists('items', $orderItem))
-        {
-            $this->createShipment($id,$orderItem);
+    protected function setFlagshipShipmentId(int $id, array $orderItem) : int
+    {
+        if (array_key_exists('items', $orderItem)) {
+            $this->createShipment($id, $orderItem);
         }
         return 0;
     }
 
-    protected function getShippingAddress() : \Magento\Sales\Model\Order\Address {
+    protected function getShippingAddress() : \Magento\Sales\Model\Order\Address
+    {
         $order = $this->getOrder();
         $shippingAddressDetails = $order->getShippingAddress();
         $shippingAddressDetails = is_null($shippingAddressDetails) ? $order->getBillingAddress() : $shippingAddressDetails;
         return $shippingAddressDetails;
     }
 
-    protected function getStore() : \Magento\Framework\DataObject {
-
+    protected function getStore() : \Magento\Framework\DataObject
+    {
         $store = $this->getOrder()->getStore();
         return $store;
     }
 
-    protected function getLogisticsBoxes(string $sourceCode) : array {
+    protected function getLogisticsBoxes(string $sourceCode) : array
+    {
         $packings = $this->displayPackings->getPacking();
         $this->boxes = [];
-        if(is_null($packings)){
-            return NULL;
+        if (is_null($packings)) {
+            return null;
         }
 
         foreach ($packings as $value) {
-            $this->getPackingBoxesBySource($sourceCode,$value);
+            $this->getPackingBoxesBySource($sourceCode, $value);
         }
         return $this->boxes;
     }
 
-    protected function getPackingBoxesBySource(string $sourceCode,array $value) : array {
-
-        if($value['source_code'] == $sourceCode){
+    protected function getPackingBoxesBySource(string $sourceCode, array $value) : array
+    {
+        if ($value['source_code'] == $sourceCode) {
             $this->boxes[] = $value;
         }
         return $this->boxes;
     }
 
-    protected function getPackings() : ?array {
+    protected function getPackings() : ?array
+    {
         return $this->displayPackings->getPacking();
     }
 
-    protected function getPackingBoxes(string $sourceCode) : ?array {
-
+    protected function getPackingBoxes(string $sourceCode) : ?array
+    {
         $packings = $this->getPackings()['packingDetails'];
 
         $boxes = [];
-        if(is_null($packings)){
-            return NULL;
+        if (is_null($packings)) {
+            return null;
         }
 
         foreach ($packings as $value) {
-            $boxes[] = $value['source_code'] == $sourceCode ? $value : NULL;
+            $boxes[] = $value['source_code'] == $sourceCode ? $value : null;
         }
 
-        $boxes = array_filter($boxes,function($value){ return $value != NULL; });
+        $boxes = array_filter($boxes, function ($value) {
+            return $value != null;
+        });
         return $boxes;
     }
 
-    protected function getBoxes() : array {
+    protected function getBoxes() : array
+    {
         return $this->displayPackings->getBoxes();
     }
 
-    protected function getBoxWeight(array $box ) : array {
-
+    protected function getBoxWeight(array $box) : array
+    {
         $allBoxes = $this->getBoxes();
 
         $boxDimensions = [];
         foreach ($allBoxes as $allBox) {
-            $boxDimensions = count($this->checkBoxModel($box,$allBox )) > 0 ? $this->checkBoxModel($box,$allBox ) : $boxDimensions;
+            $boxDimensions = count($this->checkBoxModel($box, $allBox)) > 0 ? $this->checkBoxModel($box, $allBox) : $boxDimensions;
         }
         return $boxDimensions;
     }
 
-    protected function checkBoxModel(array $box,array $allBox ) : array {
-
+    protected function checkBoxModel(array $box, array $allBox) : array
+    {
         $boxDimensions = [];
-        if($box["box_model"] == $allBox["box_model"]){
-            $boxDimensions["weight"] = $this->getBoxTotalWeight($box,$allBox );
+        if ($box["box_model"] == $allBox["box_model"]) {
+            $boxDimensions["weight"] = $this->getBoxTotalWeight($box, $allBox);
             $boxDimensions["length"] = $allBox["length"];
             $boxDimensions["width"] = $allBox["width"];
             $boxDimensions["height"] = $allBox["height"];
@@ -642,17 +667,17 @@ class Index extends \Magento\Backend\App\Action
         return $boxDimensions;
     }
 
-    protected function getBoxTotalWeight(array $box,array $allBox ) : float {
-
-        foreach($box["items"] as $item){
-            $weight = $allBox["weight"]+$this->getItemWeight($item );
+    protected function getBoxTotalWeight(array $box, array $allBox) : float
+    {
+        foreach ($box["items"] as $item) {
+            $weight = $allBox["weight"]+$this->getItemWeight($item);
         }
         return $weight;
     }
 
-    protected function getItemWeight(string $product ) : float {
-
-        $items = $this->getItems( );
+    protected function getItemWeight(string $product) : float
+    {
+        $items = $this->getItems();
         $weight = 0.0;
         foreach ($items as $item) {
             $weight = $item["description"] === $product ? $item["weight"] : $weight;
@@ -660,20 +685,19 @@ class Index extends \Magento\Backend\App\Action
         return $weight;
     }
 
-    protected function getItems( ) : array {
-
+    protected function getItems() : array
+    {
         return $this->displayPackings->getItemsForPrepareShipment();
     }
 
-    protected function getPayloadItems(array $orderItem) : array {
-
+    protected function getPayloadItems(array $orderItem) : array
+    {
         $payloadItems = [];
         $sourceCode = $orderItem['source']->getSourceCode();
-        $items = $this->getPackingBoxes( $sourceCode );
+        $items = $this->getPackingBoxes($sourceCode);
 
         foreach ($items as $item) {
-
-            $dimensions = explode('x',$item["dimensions"]);
+            $dimensions = explode('x', $item["dimensions"]);
             $temp = [
                 "description" => $item["box_model"],
                 "length" => $dimensions[0],
@@ -686,11 +710,13 @@ class Index extends \Magento\Backend\App\Action
         return $payloadItems;
     }
 
-    protected function getInsuranceValue() : float {
+    protected function getInsuranceValue() : float
+    {
         return $this->getOrder()->getSubtotal() > 100 ? $this->getOrder()->getSubtotal() : 0.00;
     }
 
-    protected function setTrackingDetails(int $flagship_shipment_id,\Magento\Sales\Model\Order\Shipment $shipment) : \Magento\Sales\Model\Order\Shipment {
+    protected function setTrackingDetails(int $flagship_shipment_id, \Magento\Sales\Model\Order\Shipment $shipment) : \Magento\Sales\Model\Order\Shipment
+    {
         try {
             $shipment->addTrack($this->addShipmentTracking($flagship_shipment_id));
             $shipment->addComment('FlagShip Shipment Unconfirmed');
@@ -702,16 +728,15 @@ class Index extends \Magento\Backend\App\Action
         }
     }
 
-    protected function addShipmentTracking(int $flagship_shipment_id) : \Magento\Sales\Model\Order\Shipment\Track {
-
+    protected function addShipmentTracking(int $flagship_shipment_id) : \Magento\Sales\Model\Order\Shipment\Track
+    {
         $trackingData = [
             'carrier_code' => 'flagship',
             'title' =>  'FlagShip',
-            'number' => 'Unconfirmed -'.$flagship_shipment_id,
+            'number' => 'Unconfirmed -' . $flagship_shipment_id,
             'description' => $flagship_shipment_id
         ];
         $tracking = $this->trackFactory->create()->addData($trackingData);
         return $tracking;
     }
-
 }
