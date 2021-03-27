@@ -1,4 +1,5 @@
 <?php
+
 namespace Flagship\Shipping\Model\Carrier;
 
 use Flagship\Shipping\Exceptions\AvailableServicesException;
@@ -111,7 +112,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $result = $this->_trackFactory->create();
         $status = $this->_trackStatusFactory->create();
         $status->setCarrier($this->getCarrierCode());
-        
+
         if (stristr($tracking, 'Unconfirmed') !== false) {
             $shipmentId = substr($tracking, strpos($tracking, '-')+1);
             $orderId = $this->getOrderId($shipmentId);
@@ -180,20 +181,14 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
     {
         $orderItems = [];
         $cartItems = $this->cart->getQuote()->getAllVisibleItems();
-        $productSkus = [];
-        $sku = [];
         $quotes = [];
         $boxesTotal = [];
 
         foreach ($cartItems as $item) {
-            $sourceCodes = [];
-            $productSku = $item->getProduct()->getSku();
-
-            $sku = count($this->productOption->getProductOptionCollection($item->getProduct())) == 0 ? $productSku : (strpos($productSku, "-") == false ? $productSku : intval(substr($productSku, 0, strpos($productSku, "-"))));
-
+            $prodId = $item->getProduct()->getId();
+            $sku = $this->productRepository->getById($prodId)->getSku();
             $productQtyPerSource = $this->getQuantityInformationPerSource->execute($sku);
-
-            $sourceCodes = $this->getSourceCodesForCartItems($productQtyPerSource, $sourceCodes, $item, $sku);
+            $sourceCodes = $this->getSourceCodesForCartItems($productQtyPerSource, $item, $sku);
             $sourceCode = $this->getOptimumSource($sourceCodes, $request, $item);
             $orderItems[$sourceCode] = $this->skipIfItemIsDownloadable($orderItems, $sourceCode, $item);
         }
@@ -281,16 +276,19 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
      */
     protected function getQuotesForAllSources(array $sourceCodes, $item, $request = null, array $destinationAddress = null)
     {
+        $prodId = $item->getProduct()->getId();
+        $sku = $this->productRepository->getById($prodId)->getSku();
         foreach ($sourceCodes as $value) {
             $source = $this->sourceRepository->get($value);
             $payload = $this->getPayload($request, $source, [$item], $destinationAddress);
-            $quotes[$item->getSku()][$value] = $this->getQuotes($payload);
+            $quotes[$sku][$value] = $this->getQuotes($payload);
         }
         return $quotes;
     }
 
-    protected function getSourceCodesForCartItems(array $productQtyPerSource, array $sourceCodes, $item, string $sku)
+    protected function getSourceCodesForCartItems(array $productQtyPerSource, $item, string $sku)
     {
+        $sourceCodes = [];
         foreach ($productQtyPerSource as $value) {
             $sourceCodes = $this->getSourceCodesForItem($value, $item, $sourceCodes);
         }
@@ -609,8 +607,8 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
     protected function addShipAsIsItemsToPayload(array $items, array $packages)
     {
         foreach ($items as $item) {
-            $sku = $item->getSku();
-            $product = $this->productRepository->get($sku);
+            $prodId = $item->getProduct()->getId();
+            $product = $this->productRepository->getById($prodId);
 
             if ($product->getDataByKey('ship_as_is') == 1) {
                 $length = $product->getDataByKey('ts_dimensions_length') == null ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
@@ -661,8 +659,8 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $cartItems = $items;
         $this->items = [];
         foreach ($cartItems as $item) {
-            $sku = $item->getSku();
-            $product = $this->productRepository->get($sku);
+            $prodId = $item->getProduct()->getId();
+            $product = $this->productRepository->getById($prodId);
             if ($product->getDataByKey('ship_as_is') == 1) {
                 continue;
             }
@@ -699,8 +697,8 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
     {
         if (count($items) == 1) {
             $item = reset($items);
-            $sku = $item->getSku();
-            $product = $this->productRepository->get($sku);
+            $prodId = $item->getProduct()->getId();
+            $product = $this->productRepository->getById($prodId);
             if ($product->getDataByKey('ship_as_is') == 1) {
                 return [
                     [
