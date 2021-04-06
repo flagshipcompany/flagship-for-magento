@@ -288,14 +288,12 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
 
         return [
                 "length" => $length <= 0 ? 1 : $length,
-
                 "width" => $width <= 0 ? 1 : $width,
-
                 "height" => $height <= 0 ? 1 : $height,
-
                 "weight" => is_null($product->getWeight()) || $product->getWeight() < 1 ? 1 : $product->getWeight(),
-
-                "description" => strcasecmp($item->getProductType(), 'configurable') == 0 ? $item->getProductOptions()["simple_sku"] . ' - ' . $item->getProductOptions()["simple_name"] : $product->getSku() . ' - ' . $product->getName()
+                "description" => strcasecmp($item->getProductType(), 'configurable') == 0 && $item->getProductOptions()
+                    ? $item->getProductOptions()["simple_sku"] . ' - ' . $item->getProductOptions()["simple_name"]
+                    : $product->getSku() . ' - ' . $product->getName()
             ];
     }
 
