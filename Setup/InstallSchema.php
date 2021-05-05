@@ -1,6 +1,7 @@
 <?php
 
 namespace Flagship\Shipping\Setup;
+
 use Magento\Framework\Setup\InstallSchemaInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\SchemaSetupInterface;
@@ -96,6 +97,6 @@ class InstallSchema implements InstallSchemaInterface
                 )->setComment("Flagship Boxes table");
         $setup->getConnection()->createTable($table);
         $setup->endSetup();
-        return TRUE;
-      }
+        return true;
+    }
 }

@@ -2,19 +2,19 @@
 
 namespace Flagship\Shipping\Block;
 
-class ManageShipments extends \Magento\Framework\View\Element\Template{
-
+class ManageShipments extends \Magento\Framework\View\Element\Template
+{
     public function __construct(
         \Magento\Framework\View\Element\Template\Context $context,
         \Flagship\Shipping\Helper\Flagship $flagship,
-        array $data=[]){
+        array $data=[]
+    ) {
         $this->flagship = $flagship;
-        parent::__construct($context,$data);
-
+        parent::__construct($context, $data);
     }
 
-    public function getIframe() : string  {
+    public function getIframe() : string
+    {
         return SMARTSHIP_WEB_URL.'/shipping/manage';
     }
-
 }

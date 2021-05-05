@@ -1,12 +1,11 @@
 <?php
  
 namespace Flagship\Shipping\Controller\Adminhtml\ShowLog;
- 
+
 use Magento\Framework\App\Action\Context;
- 
+
 class Download extends \Magento\Framework\App\Action\Action
 {
-    
     public function __construct(
         Context $context,
         \Magento\Framework\App\Response\Http\FileFactory $fileFactory,
@@ -22,7 +21,7 @@ class Download extends \Magento\Framework\App\Action\Action
         $fileName = 'flagship_logs.txt';
         $file = BP.'/var/log/flagship.log';
         $logs = '';
-        $file_handle = fopen($file,"r");
+        $file_handle = fopen($file, "r");
         while (!feof($file_handle)) {
             $logs .= fgets($file_handle);
         }

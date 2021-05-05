@@ -5,69 +5,71 @@ namespace Flagship\Shipping\Plugin;
 use \Flagship\Shipping\Flagship;
 use \Flagship\Shipping\GetShipmentsListException;
 
-
-class HideCreateShippingLabel{
-
+class HideCreateShippingLabel
+{
     public function __construct(
         \Flagship\Shipping\Helper\Flagship $flagship,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Flagship\Shipping\Logger\Logger $logger){
-
+        \Flagship\Shipping\Logger\Logger $logger
+    ) {
         $this->logger = $logger;
         $this->flagship = $flagship;
         $this->scopeConfig = $scopeConfig;
     }
 
-    public function afterSetLayout() : int {
-
+    public function afterSetLayout() : int
+    {
         $hideCreateShippingLabel = '<script>document.addEventListener("DOMContentLoaded", function(){var getCreateShippingLabelButton = document.querySelector("[data-ui-id=\'widget-button-0\']");getCreateShippingLabelButton.style.display = "none";var getShowPackagesButton = document.querySelector("[data-ui-id=\'widget-button-2\']");getShowPackagesButton.style.display = "none";},false);</script>';
         echo $hideCreateShippingLabel;
         return 0;
     }
 
-    public function beforeSetLayout(\Magento\Shipping\Block\Adminhtml\View $subject){
-
+    public function beforeSetLayout(\Magento\Shipping\Block\Adminhtml\View $subject)
+    {
         $this->order = $subject->getShipment()->getOrder();
         $this->shipment = $subject->getShipment();
         $flagshipId = $this->shipment->getDataByKey("flagship_shipment_id");
 
-        if($this->order->hasShipments() && $flagshipId === NULL ){ //magento shipping
+        if ($this->order->hasShipments() && $flagshipId === null) { //magento shipping
             return;
         }
 
-        $shipment = $this->getFlagshipShipment($flagshipId,$this->order);
+        $shipment = $this->getFlagshipShipment($flagshipId, $this->order);
         $orderId = $this->order->getId();
 
-        if($this->isShipmentConfirmed($shipment,$orderId)){
+        if ($this->isShipmentConfirmed($shipment, $orderId)) {
             $this->createButtonForShipmentTracking($subject);
             $this->updateShipmentTrackingData($shipment);
             $this->updateShipmentComment($shipment);
             return;
         }
 
-        $this->createButtonsForShipmentConfirmation($subject,$flagshipId); // shipment is still unconfirmed
+        $this->createButtonsForShipmentConfirmation($subject, $flagshipId); // shipment is still unconfirmed
         return;
     }
 
-    public function getFlagshipShipment($id, $order) : \Flagship\Shipping\Objects\Shipment {
+    public function getFlagshipShipment($id, $order) : \Flagship\Shipping\Objects\Shipment
+    {
         $storeName = $this->scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
-        $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
+        $flagship = new Flagship($this->flagship->getSettings()["token"], SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
         $request = $flagship->getShipmentByIdRequest($id)->setStoreName($storeName)->setOrderId($order->getId());
         $shipment = $request->execute();
         return $shipment;
     }
 
-    public function isShipmentConfirmed(\Flagship\Shipping\Objects\Shipment $shipment, string $orderId) : bool {
-        if(strcasecmp($shipment->getStatus(),'Prequoted') != 0){
+    public function isShipmentConfirmed(\Flagship\Shipping\Objects\Shipment $shipment, string $orderId) : bool
+    {
+        if (strcasecmp($shipment->getStatus(), 'Prequoted') != 0) {
             $this->flagship->logInfo("FlagShip Shipment# ".$shipment->getId()." for Order# ".$orderId ." is confirmed");
-            return TRUE;
+            return true;
         }
-        return FALSE;
+        return false;
     }
 
-    public function updateShipmentTrackingData(\Flagship\Shipping\Objects\Shipment $flagshipShipment, \Magento\Sales\Model\Order\Shipment $shipment = NULL) : bool {
-        if(is_null($shipment)){
+    public function updateShipmentTrackingData(\Flagship\Shipping\Objects\Shipment $flagshipShipment, \Magento\Sales\Model\Order\Shipment $shipment = null) : bool
+    {
+        if (is_null($shipment)) {
             $shipment = $this->shipment;
         }
 
@@ -84,10 +86,11 @@ class HideCreateShippingLabel{
         $shipment->setShippingLabel(file_get_contents($label));
 
         $shipment->save();
-        return TRUE;
+        return true;
     }
 
-    protected function getTrackingDetails() : array {
+    protected function getTrackingDetails() : array
+    {
         $tracks = $this->shipment->getAllTracks();
         $details = [];
         foreach ($tracks as $track) {
@@ -99,50 +102,49 @@ class HideCreateShippingLabel{
         return $details;
     }
 
-    protected function getFlagshipShipmentByTrackingNumber(string $trackingNumber) : \Flagship\Shipping\Collections\GetShipmentListCollection {
+    protected function getFlagshipShipmentByTrackingNumber(string $trackingNumber) : \Flagship\Shipping\Collections\GetShipmentListCollection
+    {
         $storeName = $this->scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
 
-        $flagship = new Flagship($this->flagship->getSettings()["token"],SMARTSHIP_API_URL,FLAGSHIP_MODULE,FLAGSHIP_MODULE_VERSION);
+        $flagship = new Flagship($this->flagship->getSettings()["token"], SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
 
-        try{
+        try {
             $shipmentList = $flagship->getShipmentListRequest()->setStoreName($storeName)->setOrderId($this->order->getId());
-            $shipment = $shipmentList->addFilter('tracking_number',$trackingNumber)->execute();
+            $shipment = $shipmentList->addFilter('tracking_number', $trackingNumber)->execute();
             $this->flagship->logInfo("Retrieved shipment list from FlagShip. Response Code : ".$shipmentList->getResponseCode());
             return $shipment;
-        } catch(GetShipmentListException $e){
+        } catch (GetShipmentListException $e) {
             $this->flagship->logError($e->getMessage());
         }
-
     }
 
-    protected function getShippingDescription() : string  {
+    protected function getShippingDescription() : string
+    {
         return $this->order->getShippingDescription();
     }
 
-    protected function updateShipmentComment(\Flagship\Shipping\Objects\Shipment $shipment) : bool {
-
+    protected function updateShipmentComment(\Flagship\Shipping\Objects\Shipment $shipment) : bool
+    {
         $parentId = $this->shipment->getId();
         $shippingAmount = $this->order->getShippingAmount();
 
-        $markup = $this->calculateMarkup($shipment->getTotal(),$shippingAmount);
+        $markup = $this->calculateMarkup($shipment->getTotal(), $shippingAmount);
 
         $insurance = is_null($shipment->getInsuranceValue()) ? 0 : ' CAD '.$shipment->getInsuranceValue();
         $newComment = 'FlagShip Shipment Unconfirmed';
 
-        if(!is_null($shipment->getTrackingNumber())){
-
-            $newComment = '<b>FlagShip Service:</b> '.$shipment->getCourierDescription().'<br><b>Tracking Number: '.$shipment->getTrackingNumber().'</b><br><b>Insurance:</b> '.$insurance.'<br><b>Customer Chose:</b> '.$this->getShippingDescription().'<br><b>You shipped with:</b> '.$shipment->getCourierDescription().'<br><b>Customer was quoted:</b> CAD '.number_format($this->order->getShippingAmount(),2).'<br><b>You Paid:</b> CAD '.number_format($shipment->getTotal(),2);
+        if (!is_null($shipment->getTrackingNumber())) {
+            $newComment = '<b>FlagShip Service:</b> '.$shipment->getCourierDescription().'<br><b>Tracking Number: '.$shipment->getTrackingNumber().'</b><br><b>Insurance:</b> '.$insurance.'<br><b>Customer Chose:</b> '.$this->getShippingDescription().'<br><b>You shipped with:</b> '.$shipment->getCourierDescription().'<br><b>Customer was quoted:</b> CAD '.number_format($this->order->getShippingAmount(), 2).'<br><b>You Paid:</b> CAD '.number_format($shipment->getTotal(), 2);
         }
 
         $shipment = $this->shipment;
         $comments = $shipment->getComments();
 
-        if(count($comments) === 0){
-
+        if (count($comments) === 0) {
             $shipment->addComment($newComment);
             $shipment->save();
-            return TRUE;
+            return true;
         }
 
         foreach ($comments as $comment) {
@@ -150,46 +152,49 @@ class HideCreateShippingLabel{
         }
 
         $shipment->save();
-        return TRUE;
-
+        return true;
     }
 
-    protected function calculateMarkup(float $flagshipTotal, string $total) : float {
+    protected function calculateMarkup(float $flagshipTotal, string $total) : float
+    {
         $markup = (($total - $flagshipTotal)/$flagshipTotal) * 100;
         return ceil($markup);
     }
 
-    protected function createButtonsForShipmentConfirmation(\Magento\Shipping\Block\Adminhtml\View $subject, string $shipmentId) : bool {
+    protected function createButtonsForShipmentConfirmation(\Magento\Shipping\Block\Adminhtml\View $subject, string $shipmentId) : bool
+    {
         $subject->addButton(
-              'flagship_shipment',
-              [
+            'flagship_shipment',
+            [
                   'label' => __('Confirm FlagShip Shipment'),
                   'class' => __('action-default scalable action-secondary'),
                   'id'  => 'flagship_shipment',
-                  'onclick' => sprintf("location.href = '%s' ;",$subject->getUrl('shipping/convertshipment',['shipmentId' => $shipmentId, 'order_id' => $this->order->getId() ]))
+                  'onclick' => sprintf("location.href = '%s' ;", $subject->getUrl('shipping/convertshipment', ['shipmentId' => $shipmentId, 'order_id' => $this->order->getId() ]))
               ]
-            );
+        );
         $subject->addButton(
-              'flagship_shipment_update',
-              [
+            'flagship_shipment_update',
+            [
                   'label' => __('Update FlagShip Shipment &#8618;'),
                   'class' => __('action scalable action-secondary'),
                   'id'  => 'flagship_shipment_update',
                   'onclick' => sprintf("location.href = '%s';", $subject->getUrl('shipping/prepareShipment', ['update' => 1, 'shipmentId' => $shipmentId, 'order_id' => $this->order->getId()]))
               ]
-            );
-        return TRUE;
+        );
+        return true;
     }
 
-    protected function getFlagshipShipmentId() : string {
+    protected function getFlagshipShipmentId() : string
+    {
         return $this->shipment->getDataByKey('flagship_shipment_id');
     }
 
-    protected function createButtonForShipmentTracking(\Magento\Shipping\Block\Adminhtml\View $subject) : int {
+    protected function createButtonForShipmentTracking(\Magento\Shipping\Block\Adminhtml\View $subject) : int
+    {
         $shipmentId =$this->getFlagshipShipmentId();
         $subject->addButton(
-              'flagship_tracking',
-              [
+            'flagship_tracking',
+            [
                   'label' => __('FlagShip Shipment : '.$shipmentId),
                   'class' => __('action-default scalable action-secondary'),
                   'id'  => 'flagship_tracking',

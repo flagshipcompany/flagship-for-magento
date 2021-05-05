@@ -2,19 +2,20 @@
 
 namespace Flagship\Shipping\Block;
 
-class Config extends \Magento\Framework\View\Element\Template{
-
+class Config extends \Magento\Framework\View\Element\Template
+{
     protected $flagship;
 
     public function __construct(
-        \Magento\Framework\View\Element\Template\Context $context, 
-        \Flagship\Shipping\Helper\Flagship $flagship){
+        \Magento\Framework\View\Element\Template\Context $context,
+        \Flagship\Shipping\Helper\Flagship $flagship
+    ) {
         parent::__construct($context);
         $this->flagship = $flagship;
     }
 
-    public function getTitle() : string {
-
+    public function getTitle() : string
+    {
         $settings = $this->flagship->getSettings();
 
         $msg = '';
@@ -28,12 +29,13 @@ class Config extends \Magento\Framework\View\Element\Template{
         return $msg;
     }
 
-    public function isTokenSet() : bool {
-        return  array_key_exists("token",$this->flagship->getSettings()) ;
+    public function isTokenSet() : bool
+    {
+        return  array_key_exists("token", $this->flagship->getSettings()) ;
     }
 
-    public function getSettings() : array {
+    public function getSettings() : array
+    {
         return $this->flagship->getSettings();
     }
-
 }

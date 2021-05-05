@@ -1,8 +1,8 @@
 <?php
 namespace Flagship\Shipping\Controller\Adminhtml\ShowLog;
 
-class Index extends \Magento\Backend\App\Action{
-
+class Index extends \Magento\Backend\App\Action
+{
     protected $_logger;
     protected $loggingEnabled;
 
@@ -10,14 +10,14 @@ class Index extends \Magento\Backend\App\Action{
         \Magento\Backend\App\Action\Context $context,
         \Magento\Framework\View\Result\PageFactory $resultPageFactory,
         \Flagship\Shipping\Logger\Logger $logger
-    ){
+    ) {
         parent::__construct($context);
         $this->resultPageFactory = $resultPageFactory;
         $this->_logger = $logger;
     }
 
-    public function execute(){
+    public function execute()
+    {
         return $this->resultPageFactory->create();
     }
-
 }

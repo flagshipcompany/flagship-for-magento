@@ -7,24 +7,25 @@ use Magento\Framework\View\Element\UiComponentFactory;
 use Magento\Ui\Component\Listing\Columns\Column;
 use Magento\Framework\UrlInterface;
 
-class BoxesActions extends Column{
+class BoxesActions extends Column
+{
     protected $urlBuilder;
 
-    public function __construct(ContextInterface $context,
+    public function __construct(
+        ContextInterface $context,
         UiComponentFactory $uiComponentFactory,
         UrlInterface $urlBuilder,
         array $components = [],
-        array $data = []){
-
+        array $data = []
+    ) {
         $this->urlBuilder = $urlBuilder;
         parent::__construct($context, $uiComponentFactory, $components, $data);
     }
 
-    public function prepareDataSource(array $dataSource) : array {
-
+    public function prepareDataSource(array $dataSource) : array
+    {
         if (isset($dataSource['data']['items'])) {
             foreach ($dataSource['data']['items'] as &$item) {
-
                 $item[$this->getData('name')]['delete'] = [
                     'href' => $this->urlBuilder->getUrl(
                         'shipping/listboxes/delete',

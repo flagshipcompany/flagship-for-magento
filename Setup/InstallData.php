@@ -8,8 +8,8 @@ use Magento\Framework\Setup\InstallDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
 
-class InstallData implements InstallDataInterface{
-
+class InstallData implements InstallDataInterface
+{
     private $eavSetupFactory;
 
     public function __construct(EavSetupFactory $eavSetupFactory)
@@ -17,10 +17,12 @@ class InstallData implements InstallDataInterface{
         $this->eavSetupFactory = $eavSetupFactory;
     }
 
-    public function install(ModuleDataSetupInterface $setup, ModuleContextInterface $context) : bool {
+    public function install(ModuleDataSetupInterface $setup, ModuleContextInterface $context) : bool
+    {
         $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
 
-        $eavSetup->addAttribute(\Magento\Catalog\Model\Product::ENTITY,
+        $eavSetup->addAttribute(
+            \Magento\Catalog\Model\Product::ENTITY,
             'ship_as_is',
             [
                 'type' => 'int',
@@ -46,7 +48,7 @@ class InstallData implements InstallDataInterface{
         );
 
 
-        if(!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_length')){
+        if (!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_length')) {
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 'length',
@@ -74,8 +76,8 @@ class InstallData implements InstallDataInterface{
             );
         }
 
-        if(!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_width')){
-        $eavSetup->addAttribute(
+        if (!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_width')) {
+            $eavSetup->addAttribute(
             \Magento\Catalog\Model\Product::ENTITY,
             'width',
             [
@@ -100,10 +102,10 @@ class InstallData implements InstallDataInterface{
                 'apply_to' => ''
             ]
         );
-    }
+        }
 
-    if(!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_height')){
-        $eavSetup->addAttribute(
+        if (!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_height')) {
+            $eavSetup->addAttribute(
             \Magento\Catalog\Model\Product::ENTITY,
             'height',
             [
@@ -128,8 +130,7 @@ class InstallData implements InstallDataInterface{
                 'apply_to' => ''
             ]
         );
+        }
+        return true;
     }
-    return TRUE;
-    }
-
 }

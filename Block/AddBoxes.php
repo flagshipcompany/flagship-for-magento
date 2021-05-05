@@ -1,37 +1,40 @@
 <?php
 namespace Flagship\Shipping\Block;
 
-class AddBoxes extends \Magento\Framework\View\Element\Template{
-
+class AddBoxes extends \Magento\Framework\View\Element\Template
+{
     protected $flagship;
 
     public function __construct(
-        \Magento\Framework\View\Element\Template\Context $context, 
-        \Magento\Framework\App\ResourceConnection $resource, 
-        \Flagship\Shipping\Helper\Flagship $flagship){
-        
+        \Magento\Framework\View\Element\Template\Context $context,
+        \Magento\Framework\App\ResourceConnection $resource,
+        \Flagship\Shipping\Helper\Flagship $flagship
+    ) {
         parent::__construct($context);
         $this->resource = $resource;
         $this->flagship = $flagship;
     }
 
-    public function getUnits() : string {
+    public function getUnits() : string
+    {
         $units = $this->_scopeConfig->getValue(
             'general/locale/weight_unit',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
         );
 
-        if($units === 'kgs'){
+        if ($units === 'kgs') {
             return 'metric';
         }
         return 'imperial';
     }
 
-    public function getPackingsSetting() : ?string {
+    public function getPackingsSetting() : ?string
+    {
         return $this->flagship->getSettings()["packings"];
     }
 
-    public function showBoxPrice() : bool {
+    public function showBoxPrice() : bool
+    {
         return $this->_scopeConfig->getValue(
             'carriers/flagship/pick_and_pack_price',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
