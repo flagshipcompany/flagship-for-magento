@@ -369,10 +369,11 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
 
     protected function getUnits() : string
     {
-        $units = $this->getOrder()->getStore()->getConfig('general/locale/weight_unit');
-        if ($units === 'kgs') {
-            return 'metric';
-        }
+        // We only use imperial units because Magento doesn't automatically convert the products' details.
+        // $units = $this->getOrder()->getStore()->getConfig('general/locale/weight_unit');
+        // if ($units === 'kgs') {
+        //     return 'metric';
+        // }
         return 'imperial';
     }
 

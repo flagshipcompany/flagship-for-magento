@@ -647,10 +647,11 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
 
     protected function getUnits() : string
     {
-        $weightUnit = $this->_scopeConfig->getValue('general/locale/weight_unit', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        if ($weightUnit === 'kgs') {
-            return 'metric';
-        }
+        // We only use imperial units because Magento doesn't automatically convert the products' details.
+        // $weightUnit = $this->_scopeConfig->getValue('general/locale/weight_unit', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        // if ($weightUnit === 'kgs') {
+        //     return 'metric';
+        // }
         return 'imperial';
     }
 
@@ -665,7 +666,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
                 continue;
             }
 
-            $weight = $product->getWeight() < 1 ? 1 : $product->getWeight();
+            $weight = empty($product->getWeight()) ? 1 : $product->getWeight();
             $temp = $this->packing->getItemsArray($item);
 
             $temp["weight"] = $weight;

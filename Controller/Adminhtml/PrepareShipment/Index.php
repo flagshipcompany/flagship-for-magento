@@ -5,7 +5,6 @@ namespace Flagship\Shipping\Controller\Adminhtml\PrepareShipment;
 use Flagship\Shipping\Exceptions\EditShipmentException;
 use Flagship\Shipping\Exceptions\PrepareShipmentException;
 use Flagship\Shipping\Flagship;
-use Flagship\Shipping\Model\Carrier\FlagshipQuote;
 
 class Index extends \Magento\Backend\App\Action
 {
@@ -543,8 +542,10 @@ class Index extends \Magento\Backend\App\Action
 
     protected function getWeightUnits() : string
     {
-        $weightUnit = $this->getStore()->getConfig('general/locale/weight_unit');
-        return $weightUnit;
+        // We only use imperial units because Magento doesn't automatically convert the products' details.
+        return 'lbs';
+        // $weightUnit = $this->getStore()->getConfig('general/locale/weight_unit');
+        // return $weightUnit;
     }
 
     protected function getTotalWeight() : float

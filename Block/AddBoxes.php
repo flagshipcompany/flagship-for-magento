@@ -17,14 +17,14 @@ class AddBoxes extends \Magento\Framework\View\Element\Template
 
     public function getUnits() : string
     {
-        $units = $this->_scopeConfig->getValue(
-            'general/locale/weight_unit',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-        );
-
-        if ($units === 'kgs') {
-            return 'metric';
-        }
+        // We only use imperial units because Magento doesn't automatically convert the products' details.
+        // $units = $this->_scopeConfig->getValue(
+        //     'general/locale/weight_unit',
+        //     \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+        // );
+        // if($units === 'kgs'){
+        //     return 'metric';
+        // }
         return 'imperial';
     }
 
