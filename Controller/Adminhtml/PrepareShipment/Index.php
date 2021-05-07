@@ -207,9 +207,9 @@ class Index extends \Magento\Backend\App\Action
     {
         foreach ($this->shipAsIsProducts as $value) {
             $product = $value->getProduct();
-            $length = $product->getDataByKey('ts_dimensions_length') == null ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
-            $width = $product->getDataByKey('ts_dimensions_width') == null ? ceil($product->getDataByKey('width')) : ceil($product->getDataByKey('ts_dimensions_width'));
-            $height = $product->getDataByKey('ts_dimensions_height') == null ? ceil($product->getDataByKey('height')) : ceil($product->getDataByKey('ts_dimensions_height'));
+            $length = $product->getDataByKey('ts_dimensions_length') == null ? floatval($product->getDataByKey('length')) : floatval($product->getDataByKey('ts_dimensions_length'));
+            $width = $product->getDataByKey('ts_dimensions_width') == null ? floatval($product->getDataByKey('width')) : floatval($product->getDataByKey('ts_dimensions_width'));
+            $height = $product->getDataByKey('ts_dimensions_height') == null ? floatval($product->getDataByKey('height')) : floatval($product->getDataByKey('ts_dimensions_height'));
 
             $packages['items'][] = [
                 'description' => $product->getName(),
@@ -417,9 +417,9 @@ class Index extends \Magento\Backend\App\Action
     protected function getPackageItems(\Magento\Sales\Model\Order\Item $item, array $packageItems) : array
     {
         $qty = $item->getQtyOrdered();
-        $length = $item->getProduct()->getDataByKey('ts_dimensions_length') == null ? intval($item->getProduct()->getDataByKey('length')) : intval($item->getProduct()->getDataByKey('ts_dimensions_length'));
-        $width = $item->getProduct()->getDataByKey('ts_dimensions_width') == null ? intval($item->getProduct()->getDataByKey('width')) : intval($item->getProduct()->getDataByKey('ts_dimensions_width'));
-        $height = $item->getProduct()->getDataByKey('ts_dimensions_height') == null ? intval($item->getProduct()->getDataByKey('height')) : intval($item->getProduct()->getDataByKey('ts_dimensions_height'));
+        $length = $item->getProduct()->getDataByKey('ts_dimensions_length') == null ? floatval($item->getProduct()->getDataByKey('length')) : floatval($item->getProduct()->getDataByKey('ts_dimensions_length'));
+        $width = $item->getProduct()->getDataByKey('ts_dimensions_width') == null ? floatval($item->getProduct()->getDataByKey('width')) : floatval($item->getProduct()->getDataByKey('ts_dimensions_width'));
+        $height = $item->getProduct()->getDataByKey('ts_dimensions_height') == null ? floatval($item->getProduct()->getDataByKey('height')) : floatval($item->getProduct()->getDataByKey('ts_dimensions_height'));
 
         for ($i=0; $i<$qty;$i++) {
             $packageItems[] = [

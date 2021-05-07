@@ -740,7 +740,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
                 'width' => intval($packing->getWidth()),
                 'height' => intval($packing->getHeight()),
                 'length' => intval($packing->getLength()),
-                'weight' => $packing->getWeight(),
+                'weight' => $packing->getWeight() < 1 ? 1 : $packing->getWeight(),
                 'description' => $packing->getBoxModel()
             ];
             $returnItems[] = $temp;

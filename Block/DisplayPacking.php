@@ -280,17 +280,17 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
         $prodId = $item->getProduct()->getId();
         $product = $this->productRepository->getById($prodId);
 
-        $length = is_null($product->getDataByKey('length')) ? (is_null($product->getDataByKey('ts_dimensions_length')) ? 1 : intval($product->getDataByKey('ts_dimensions_length'))) : intval($product->getDataByKey('length'));
+        $length = is_null($product->getDataByKey('length')) ? (is_null($product->getDataByKey('ts_dimensions_length')) ? 1 : floatval($product->getDataByKey('ts_dimensions_length'))) : floatval($product->getDataByKey('length'));
 
-        $width = is_null($product->getDataByKey('width')) ? is_null($product->getDataByKey('ts_dimensions_width')) ? 1 : intval($product->getDataByKey('ts_dimensions_width')) : intval($product->getDataByKey('width'));
+        $width = is_null($product->getDataByKey('width')) ? is_null($product->getDataByKey('ts_dimensions_width')) ? 1 : floatval($product->getDataByKey('ts_dimensions_width')) : floatval($product->getDataByKey('width'));
 
-        $height = is_null($product->getDataByKey('height')) ? is_null($product->getDataByKey('ts_dimensions_height')) ? 1 : intval($product->getDataByKey('ts_dimensions_height')) : intval($product->getDataByKey('height'));
+        $height = is_null($product->getDataByKey('height')) ? is_null($product->getDataByKey('ts_dimensions_height')) ? 1 : floatval($product->getDataByKey('ts_dimensions_height')) : floatval($product->getDataByKey('height'));
 
         return [
                 "length" => $length <= 0 ? 1 : $length,
                 "width" => $width <= 0 ? 1 : $width,
                 "height" => $height <= 0 ? 1 : $height,
-                "weight" => is_null($product->getWeight()) || $product->getWeight() < 1 ? 1 : $product->getWeight(),
+                "weight" => is_null($product->getWeight()) ? 1 : $product->getWeight(),
                 "description" => strcasecmp($item->getProductType(), 'configurable') == 0 && $item->getProductOptions()
                     ? $item->getProductOptions()["simple_sku"] . ' - ' . $item->getProductOptions()["simple_name"]
                     : $product->getSku() . ' - ' . $product->getName()
