@@ -365,20 +365,25 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         return $result->append($method);
     }
 
-    protected function addFreeShippingMethod() : \Magento\Quote\Model\Quote\Address\RateResult\Method
+    protected function appendFreeShippingMethod(\Magento\Shipping\Model\Rate\Result $result) : \Magento\Shipping\Model\Rate\Result
     {
+        $freeShippingEnabled = intval($this->storeManager->getStore()->getConfig('carriers/flagship/free_shipping')) === 1;
+        if (!$freeShippingEnabled) {
+            return $result;
+        }
         $method = $this->_rateMethodFactory->create();
         $carrier = self::SHIPPING_CODE;
         $method->setCarrier($carrier);
-        $method->setCarrierTitle('Free Shipping');
+        $method->setCarrierTitle('Fulfillment');
         $method->setMethod('flagship_free_shipping');
         $method->setMethodTitle('Free Shipping');
         $amount = 0.00;
         $method->setPrice($amount);
         $method->setCost($amount);
         $this->flagship->logInfo('Prepared Free Shipping Method');
+        $result->append($method);
 
-        return $method;
+        return $result;
     }
 
     protected function checkPayloadForLtl(array $payload) : int
@@ -431,10 +436,8 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
             foreach ($rates as $rate) {
                 $result->append($this->prepareShippingMethods($rate, $boxesTotal));
             }
-            $freeShippingEnabled = intval($this->storeManager->getStore()->getConfig('carriers/flagship/free_shipping')) === 1;
-            if ($freeShippingEnabled) {
-                $result->append($this->addFreeShippingMethod());
-            }
+            $this->appendFreeShippingMethod($result);
+            $this->appendWeeklyShippingMethod($result);
 
             return $result;
         } catch (\Magento\Framework\Exception\LocalizedException $e) {
@@ -811,5 +814,26 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         } catch (GetShipmentListException $e) {
             $this->flagship->logError($e->getMessage());
         }
+    }
+
+    protected function appendWeeklyShippingMethod(\Magento\Shipping\Model\Rate\Result $result) : \Magento\Shipping\Model\Rate\Result
+    {
+        $weeklyShippingEnabled = intval($this->storeManager->getStore()->getConfig('carriers/flagship/weekly_shipping')) === 1;
+        if (!$weeklyShippingEnabled) {
+            return $result;
+        }
+        $method = $this->_rateMethodFactory->create();
+        $carrier = self::SHIPPING_CODE;
+        $method->setCarrier($carrier);
+        $method->setCarrierTitle('Fulfillment');
+        $method->setMethod('flagship_weekly_shipping');
+        $method->setMethodTitle('Weekly Shipping');
+        $amount = 0.00;
+        $method->setPrice($amount);
+        $method->setCost($amount);
+        $this->flagship->logInfo('Prepared Weekly Shipping Method');
+        $result->append($method);
+
+        return $result;
     }
 }
