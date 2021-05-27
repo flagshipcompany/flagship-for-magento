@@ -119,7 +119,10 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
             $url = $this->url->getUrl('shipping/convertShipment', ['shipmentId'=> $shipmentId, 'order_id' => $orderId]);
             $status->setCarrierTitle('Your FlagShip shipment is still Unconfirmed');
         }
-        if (stristr($tracking, 'Unconfirmed') === false && stristr($tracking, 'Free Shipping') == false) { //shipment confirmed
+        if (stristr($tracking, 'Unconfirmed') === false
+            && stristr($tracking, 'Free Shipping') == false
+            && stristr($tracking, 'Weekly Shipping') == false
+        ) { //shipment confirmed
             $shipment = $this->getShipmentFromFlagship($tracking);
             $status->setCarrierTitle($shipment->getCourierDescription());
             $courierName = $shipment->getCourierName();
@@ -127,7 +130,12 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
             $url = $this->getTrackingUrl($courierName, $trackingNumber);
         }
 
-        if (stristr($tracking, 'Unconfirmed') === false && stristr($tracking, 'Free Shipping') !== false) {
+        if (stristr($tracking, 'Unconfirmed') === false
+            && (
+                stristr($tracking, 'Free Shipping') !== false
+                || stristr($tracking, 'Weekly Shipping') !== false
+            )
+        ) {
             $url = 'https://www.flagshipcompany.com';
         }
         $status->setTracking($tracking);
