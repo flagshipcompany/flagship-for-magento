@@ -121,7 +121,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         }
         if (stristr($tracking, 'Unconfirmed') === false
             && stristr($tracking, 'Free Shipping') == false
-            && stristr($tracking, 'Weekly Shipping') == false
+            && stristr($tracking, 'Consolidated Weekly Shipping') == false
         ) { //shipment confirmed
             $shipment = $this->getShipmentFromFlagship($tracking);
             $status->setCarrierTitle($shipment->getCourierDescription());
@@ -133,7 +133,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         if (stristr($tracking, 'Unconfirmed') === false
             && (
                 stristr($tracking, 'Free Shipping') !== false
-                || stristr($tracking, 'Weekly Shipping') !== false
+                || stristr($tracking, 'Consolidated Weekly Shipping') !== false
             )
         ) {
             $url = 'https://www.flagshipcompany.com';
@@ -835,11 +835,11 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $method->setCarrier($carrier);
         $method->setCarrierTitle('Fulfillment');
         $method->setMethod('flagship_weekly_shipping');
-        $method->setMethodTitle('Weekly Shipping');
+        $method->setMethodTitle('Consolidated Weekly Shipping');
         $amount = 0.00;
         $method->setPrice($amount);
         $method->setCost($amount);
-        $this->flagship->logInfo('Prepared Weekly Shipping Method');
+        $this->flagship->logInfo('Prepared Consolidated Weekly Shipping Method');
         $result->append($method);
 
         return $result;
