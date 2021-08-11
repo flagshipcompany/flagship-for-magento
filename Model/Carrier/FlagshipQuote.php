@@ -243,7 +243,6 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
     {
         if (array_key_exists('items', $orderItem)) {
             $payload = $this->getPayload($request, $orderItem["source"], $orderItem["items"]);
-            $this->flagship->logInfo("Quotes payload: " . json_encode($payload));
             $sourceCode = $orderItem["source"]->getSourceCode();
             $dataArray['ltlFlagArray'][]  = $this->checkPayloadForLtl($payload);
             $dataArray['boxesTotal'][] = $this->getBoxesTotalFromPayload($payload);
@@ -326,18 +325,18 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         foreach ($quotes as $quote) {
             //cheapest source selection
             $cheapest = 99999.99;
-
-            $cheapestQuote = $this->getCheapestQuote($quote, $cheapest);
+            $cheapestQuote = $this->getCheapestQuote($quote, $cheapest);        
             $finalQuotes[] = $cheapestQuote['quote'];
             $sourceCode = $cheapestQuote['sourceCode'];
-        }
+        }      
         return $sourceCode;
     }
 
     protected function getCheapestQuote(array $quote, float $cheapest)
     {
         foreach ($quote as $key => $value) { //key is source
-            $cheapestArray = $this->getFinalCheapestQuote($key, $value, $cheapest);
+            $finalCheapestQuote = $this->getFinalCheapestQuote($key, $value, $cheapest);
+            $cheapestArray = count($finalCheapestQuote) > 0 ? $finalCheapestQuote : $cheapestArray;
             $cheapest = array_key_exists('cheapestTotal', $cheapestArray) ? $cheapestArray['cheapestTotal'] : 99999.99;
         }
         return $cheapestArray;
@@ -347,13 +346,13 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
     {
         $cheapestArray = [];
         if ($value->getCheapest()->getTotal() <= $cheapest) {
-            $cheapest = $value->getCheapest()->getTotal();
+            $cheapest = $value->getCheapest()->getTotal();         
             $cheapestArray = [
                 'cheapestTotal' => $cheapest,
                 'quote' => $value,
                 'sourceCode' => $key
             ];
-        }
+        }     
         return $cheapestArray;
     }
 
@@ -440,7 +439,6 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
     {
         $result = $this->_rateFactory->create();
         try {
-            $this->flagship->logInfo('Retrieved quotes from FlagShip');
             foreach ($rates as $rate) {
                 $result->append($this->prepareShippingMethods($rate, $boxesTotal));
             }
@@ -795,6 +793,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $storeName = $storeName == null ? '' : $storeName;
 
         $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
+        $this->flagship->logInfo("Quotes payload sent to FlagShip: ".json_encode($payload));
         $quoteRequest = $flagship->createQuoteRequest($payload)->setStoreName($storeName);
         try {
             $quotes = $quoteRequest->execute();
