@@ -206,11 +206,22 @@ class Index extends \Magento\Backend\App\Action
     protected function getPackagesForShipAsIsProducts(array $packages)
     {
         foreach ($this->shipAsIsProducts as $value) {
-            $product = $value->getProduct();
-            $length = $product->getDataByKey('ts_dimensions_length') == null ? round($product->getDataByKey('length'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_length'), 0, PHP_ROUND_HALF_UP);
-            $width = $product->getDataByKey('ts_dimensions_width') == null ? round($product->getDataByKey('width'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_width'), 0, PHP_ROUND_HALF_UP);
-            $height = $product->getDataByKey('ts_dimensions_height') == null ? round($product->getDataByKey('height'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_height'), 0, PHP_ROUND_HALF_UP);
 
+            $product = $value->getProduct();
+            $qtyOrdered = $value->getQtyOrdered();
+            $packages = $this->addShipAsIsItemsByQty($product, $qtyOrdered, $packages);
+
+        }
+        return $packages;
+    }
+
+    protected function addShipAsIsItemsByQty($product, $qtyOrdered, array $packages) 
+    {
+        $length = $product->getDataByKey('ts_dimensions_length') == null ? round($product->getDataByKey('length'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_length'), 0, PHP_ROUND_HALF_UP);
+        $width = $product->getDataByKey('ts_dimensions_width') == null ? round($product->getDataByKey('width'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_width'), 0, PHP_ROUND_HALF_UP);
+        $height = $product->getDataByKey('ts_dimensions_height') == null ? round($product->getDataByKey('height'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_height'), 0, PHP_ROUND_HALF_UP);
+
+        for ($i = 0; $i < $qtyOrdered ; $i++) {
             $packages['items'][] = [
                 'description' => $product->getName(),
                 'length' => $length,
@@ -218,7 +229,9 @@ class Index extends \Magento\Backend\App\Action
                 'height' => $height,
                 'weight' => $product->getWeight()
             ];
+    
         }
+        
         return $packages;
     }
 
@@ -526,6 +539,7 @@ class Index extends \Magento\Backend\App\Action
             $orderId = $this->getOrder()->getId();
             $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
+            $this->flagship->logInfo("Prepare Shipment payload sent to FlagShip: ".json_encode($payload));
             $request = $flagship->prepareShipmentRequest($payload)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view', ['order_id' => $orderId]));
             $response = $request->execute();
             $id = $response->shipment->id;
