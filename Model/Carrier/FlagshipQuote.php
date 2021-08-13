@@ -618,22 +618,37 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         foreach ($items as $item) {
             $prodId = $item->getProduct()->getId();
             $product = $this->productRepository->getById($prodId);
-
-            if ($product->getDataByKey('ship_as_is') == 1) {
-                $length = $product->getDataByKey('ts_dimensions_length') == null ? ceil($product->getDataByKey('length')) : ceil($product->getDataByKey('ts_dimensions_length'));
-                $width = $product->getDataByKey('ts_dimensions_width') == null ? ceil($product->getDataByKey('width')) : ceil($product->getDataByKey('ts_dimensions_width'));
-                $height = $product->getDataByKey('ts_dimensions_height') == null ? ceil($product->getDataByKey('height')) : ceil($product->getDataByKey('ts_dimensions_height'));
-
-                $packages['items'][] = [
-                    'length' => $length,
-                    'width' => $width,
-                    'height' => $height,
-                    'weight' => $product->getWeight(),
-                    'description' => $product->getName()
-                ];
-            }
+            $qty = $item->getQty();
+            $packages = $this->getShipAsIsItems($product, $packages, $qty);
         }
 
+        return $packages;
+    }
+
+    protected function getShipAsIsItems( $product, array $packages, $qty) {
+        if ($product->getDataByKey('ship_as_is') == 1) {
+
+            $packages = $this->getShipAsIsItemsByQty($product, $packages, $qty);
+        }
+
+        return $packages;
+    }
+
+    protected function getShipAsIsItemsByQty($product, array $packages, $qty) {
+
+        $length = $product->getDataByKey('ts_dimensions_length') == null ? round($product->getDataByKey('length'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_length'), 0, PHP_ROUND_HALF_UP);
+        $width = $product->getDataByKey('ts_dimensions_width') == null ? round($product->getDataByKey('width'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_width'), 0, PHP_ROUND_HALF_UP);
+        $height = $product->getDataByKey('ts_dimensions_height') == null ? round($product->getDataByKey('height'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_height'), 0, PHP_ROUND_HALF_UP);
+  
+        for ($i = 0; $i < $qty; $i++) {
+            $packages['items'][] = [
+                'length' => $length,
+                'width' => $width,
+                'height' => $height,
+                'weight' => $product->getWeight(),
+                'description' => $product->getName()
+            ];
+        }
         return $packages;
     }
 
@@ -705,26 +720,22 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
 
     protected function getItemsArray(array $items) : array
     {
-        if (count($items) == 1) {
-            $item = reset($items);
+
+        $returnItems = [];
+        $flag = 1; //no ship_as_is items in cart
+
+        foreach ($items as $item) {
             $prodId = $item->getProduct()->getId();
             $product = $this->productRepository->getById($prodId);
-            if ($product->getDataByKey('ship_as_is') == 1) {
-                return [
-                    [
-                        'length' => ceil($product->getDataByKey('length')),
-                        'width' => ceil($product->getDataByKey('width')),
-                        'height' => ceil($product->getDataByKey('height')),
-                        'weight' => $product->getWeight(),
-                        'description' => $product->getName()
-                    ]
-                ];
-            }
+            $flag = $product->getDataByKey('ship_as_is') == 0 ? 1 : 0 ;
+        }
+
+        if($flag == 0){ //only ship_as_is products in cart
+            return [];
         }
 
         $boxes = $this->packing->getBoxes();
 
-        $returnItems = [];
         if ($boxes == null) {
             $this->getPayloadForPacking($items);
             return $this->items;
@@ -735,12 +746,12 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         if ($packings ==  null) {
             return [
                 [
-                'width' => 1,
-                'height' => 1,
-                'length' => 1,
-                'weight' => 1.00,
-                'description' => 'Box unknown'
-            ]
+                    'width' => 1,
+                    'height' => 1,
+                    'length' => 1,
+                    'weight' => 1.00,
+                    'description' => 'Box unknown'
+                ]
             ];
         }
 
