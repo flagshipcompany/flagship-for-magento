@@ -490,15 +490,18 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $amount = array_sum($rate['subtotal']);
         $markup = $this->getConfigData('markup');
         $flatFee = $this->getConfigData('flat_fee');
+        $addTaxes = $this->getConfigData('taxes_included');
         if ($markup > 0) {
             $amount += ($markup/100)*$amount;
         }
         if ($flatFee > 0) {
             $amount += $flatFee;
         }
-        $shipmentTax = array_sum($rate['taxesTotal']);
-        $amount += $shipmentTax;
-
+        if ($addTaxes) {
+            $shipmentTax = array_sum($rate['taxesTotal']);
+            $amount += $shipmentTax;
+        }
+        
         $amount += array_sum($boxesTotal);
 
         $method->setPrice($amount);
