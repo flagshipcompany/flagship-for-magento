@@ -44,7 +44,10 @@ class HideCreateShippingLabel
             return;
         }
 
-        $this->createButtonsForShipmentConfirmation($subject, $flagshipId); // shipment is still unconfirmed
+        if(strcasecmp($shipment->getStatus(), 'Prequoted') == 0) {
+            $this->createButtonsForShipmentConfirmation($subject, $flagshipId); // shipment is still unconfirmed
+        }
+        
         return;
     }
 
@@ -60,7 +63,7 @@ class HideCreateShippingLabel
 
     public function isShipmentConfirmed(\Flagship\Shipping\Objects\Shipment $shipment, string $orderId) : bool
     {
-        if (strcasecmp($shipment->getStatus(), 'Prequoted') != 0) {
+        if (strcasecmp($shipment->getStatus(), 'Prequoted') != 0 && strcasecmp($shipment->getStatus(), 'Cancelled') != 0) {
             $this->flagship->logInfo("FlagShip Shipment# ".$shipment->getId()." for Order# ".$orderId ." is confirmed");
             return true;
         }
@@ -76,14 +79,17 @@ class HideCreateShippingLabel
         $trackingNumber = $flagshipShipment->getTrackingNumber();
         $label = $flagshipShipment->getThermalLabel();
         $tracks = $shipment->getAllTracks();
-
+      
         foreach ($tracks as $track) {
             $title = strcasecmp($flagshipShipment->getCourierName(), 'fedex') == 0 ? 'FedEx '.$flagshipShipment->getCourierDescription() : $flagshipShipment->getCourierDescription();
             $track->setTitle($title);
             $track->setTrackNumber($trackingNumber);
         }
 
-        $shipment->setShippingLabel(file_get_contents($label));
+        if(!empty($label) || $label != NULL){
+            $shipment->setShippingLabel(file_get_contents($label));
+        }
+        
 
         $shipment->save();
         return true;

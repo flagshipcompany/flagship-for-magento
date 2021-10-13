@@ -122,10 +122,7 @@ class Index extends \Magento\Backend\App\Action
         $destinationAddressForSourceSelection = $this->getDestinationAddress();
 
         foreach ($items as $item) {
-            $prodId = $item->getProduct()->getId();
-            $sku = strcasecmp($item->getProductType(), 'configurable') == 0
-                ? $item->getProductOptions()["simple_sku"] :
-                $this->productRepository->getById($prodId)->getSku();
+            $sku = $item->getSku();
 
             $sourceCodes = $this->getSourceCodesBySkus->execute([$sku]);
 

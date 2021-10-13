@@ -126,10 +126,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
         $items = $order->getAllItems();
 
         foreach ($items as $item) {
-            $prodId = $item->getProduct()->getId();
-            $skus = strcasecmp($item->getProductType(), 'configurable') == 0
-                ? $item->getProductOptions()["simple_sku"]
-                : $this->productRepository->getById($prodId)->getSku($item);
+            $skus = $item->getSku();
             $sourceCode = $this->getSourceCodesBySkus->execute([$skus])[0];
             $orderItems[$sourceCode]['source'] = $this->sourceRepository->get($sourceCode);
             if ($item->getProductType() != 'configurable') {
@@ -168,8 +165,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
     protected function skipDownloadableProductsFromPayload($item) : int
     {
         if ($item->getProductType() != 'downloadable') {
-            $prodId = $item->getProduct()->getId();
-            $product = $this->productRepository->getById($prodId);
+            $sku = $item->getSku();
+            $product = $this->productRepository->get($sku);
             $productsShippingAsIs = $product->getDataByKey('ship_as_is') == 1 ? $this->addToShipAsIsProducts($item) : $this->forComplexItem($item);
         }
         return 0;
@@ -277,8 +274,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
      */
     public function getItemsArray($item) : array
     {
-        $prodId = $item->getProduct()->getId();
-        $product = $this->productRepository->getById($prodId);
+        $sku = $item->getSku();
+        $product = $this->productRepository->get($sku);
 
         $length = is_null($product->getDataByKey('length')) ? (is_null($product->getDataByKey('ts_dimensions_length')) ? 1 : floatval($product->getDataByKey('ts_dimensions_length'))) : floatval($product->getDataByKey('length'));
 
