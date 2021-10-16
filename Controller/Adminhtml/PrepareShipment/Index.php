@@ -39,7 +39,8 @@ class Index extends \Magento\Backend\App\Action
         \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
         \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
         \Flagship\Shipping\Model\Carrier\FlagshipQuote $flagshipQuote,
-        \Magento\Catalog\Model\ProductRepository $productRepository
+        \Magento\Catalog\Model\ProductRepository $productRepository,
+        \Magento\Customer\Api\AddressRepositoryInterface $addressRepository
     ) {
         $this->orderRepository = $orderRepository;
         $this->scopeConfig = $scopeConfig;
@@ -60,6 +61,7 @@ class Index extends \Magento\Backend\App\Action
         $this->getSourceCodeByShipmentId = $getSourceCodeByShipmentId;
         $this->flagshipQuote = $flagshipQuote;
         $this->productRepository = $productRepository;
+        $this->addressRepository = $addressRepository;
         parent::__construct($context);
     }
 
@@ -395,6 +397,14 @@ class Index extends \Magento\Backend\App\Action
                 'description' => 'insurance'
             ];
         }
+
+        $shippingAddressCustomerAddressId = $this->order->getShippingAddress()->getCustomerAddressId();
+        $address = $this->addressRepository->getById($shippingAddressCustomerAddressId);
+
+        if($address->getCustomAttribute('tracking_email') != NULL) {      
+            $options["shipment_tracking_emails"] =  $address->getCustomAttribute('tracking_email')->getValue();
+        }       
+        
         return $options;
     }
 
