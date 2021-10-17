@@ -403,8 +403,11 @@ class Index extends \Magento\Backend\App\Action
 
         if($address->getCustomAttribute('tracking_email') != NULL) {      
             $options["shipment_tracking_emails"] =  $address->getCustomAttribute('tracking_email')->getValue();
-        }       
+        }
         
+        if($store->getConfig('carriers/flagship/delivery_instructions')) {
+            $options["driver_instructions"] = $store->getConfig('carriers/flagship/delivery_instructions');
+        }        
         return $options;
     }
 
