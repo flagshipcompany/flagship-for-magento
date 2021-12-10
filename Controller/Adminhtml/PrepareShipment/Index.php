@@ -219,6 +219,7 @@ class Index extends \Magento\Backend\App\Action
         $length = $product->getDataByKey('ts_dimensions_length') == null ? round($product->getDataByKey('length'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_length'), 0, PHP_ROUND_HALF_UP);
         $width = $product->getDataByKey('ts_dimensions_width') == null ? round($product->getDataByKey('width'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_width'), 0, PHP_ROUND_HALF_UP);
         $height = $product->getDataByKey('ts_dimensions_height') == null ? round($product->getDataByKey('height'), 0, PHP_ROUND_HALF_UP) : round($product->getDataByKey('ts_dimensions_height'), 0, PHP_ROUND_HALF_UP);
+        $height = max($height,1);
 
         for ($i = 0; $i < $qtyOrdered ; $i++) {
             $packages['items'][] = [
