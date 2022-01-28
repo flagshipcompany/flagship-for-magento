@@ -227,7 +227,7 @@ class Index extends \Magento\Backend\App\Action
                 'length' => $length,
                 'width' => $width,
                 'height' => $height,
-                'weight' => $product->getWeight()
+                'weight' => round($product->getWeight(),0,PHP_ROUND_HALF_UP)
             ];
     
         }
@@ -450,7 +450,7 @@ class Index extends \Magento\Backend\App\Action
                 'length' => $length,
                 'width' => $width,
                 'height'=> $height,
-                'weight' => $item->getProduct()->getWeight(),
+                'weight' => max($item->getProduct()->getWeight(),1),
                 'description' => $item->getProduct()->getName()
             ];
         }
@@ -729,7 +729,7 @@ class Index extends \Magento\Backend\App\Action
                 "length" => $dimensions[0],
                 "width" => $dimensions[1],
                 "height" => $dimensions[2],
-                "weight" => $item["weight"]
+                "weight" => max($item["weight"],1)
             ];
             $payloadItems[] = $temp;
         }
