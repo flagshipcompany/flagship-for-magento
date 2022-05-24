@@ -138,7 +138,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
             ) )
         ) {
             $url = 'https://www.flagshipcompany.com';
-            $tracking = "Tracking not available for this shipment. Please check with FlagShip";
+            $tracking = "Tracking is not available for this shipment. Please check with FlagShip";
         }
         $status->setTracking($tracking);
         $status->setUrl($url);
