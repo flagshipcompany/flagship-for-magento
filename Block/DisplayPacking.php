@@ -202,7 +202,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
 
     protected function addToShipAsIsProducts($item)
     {
-        $prodId = $item->getOptionByCode('simple_product')->getProduct()->getId();
+        $prodId = $item->getProductType() == 'configurable' ? $item->getOptionByCode('simple_product')->getProduct()->getId() : $item->getProduct()->getId();
         $product = $this->productRepository->getById($prodId);
         $this->shipAsIsProducts[] = $product->getName();
     }
@@ -274,7 +274,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
      */
     public function getItemsArray($item) : array
     {
-        $prodId = $item->getOptionByCode('simple_product')->getProduct()->getId();
+        $prodId = $item->getProductType() == 'configurable' ? $item->getOptionByCode('simple_product')->getProduct()->getId() : $item->getProduct()->getId();
         $product = $this->productRepository->getById($prodId);
 
         $length = is_null($product->getDataByKey('length')) ? (is_null($product->getDataByKey('ts_dimensions_length')) ? 1 : floatval($product->getDataByKey('ts_dimensions_length'))) : floatval($product->getDataByKey('length'));

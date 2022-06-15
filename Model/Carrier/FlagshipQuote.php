@@ -195,7 +195,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $boxesTotal = [];
 
         foreach ($cartItems as $item) {
-            $prodId = $item->getOptionByCode('simple_product')->getProduct()->getId();
+            $prodId = $item->getProductType() == 'configurable' ? $item->getOptionByCode('simple_product')->getProduct()->getId() : $item->getProduct()->getId();
             $sku = $this->productRepository->getById($prodId)->getSku();
             $productQtyPerSource = $this->getQuantityInformationPerSource->execute($sku);
             $sourceCodes = $this->getSourceCodesForCartItems($productQtyPerSource, $item, $sku);
@@ -285,7 +285,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
      */
     protected function getQuotesForAllSources(array $sourceCodes, $item, $request = null, array $destinationAddress = null)
     {
-        $prodId = $item->getOptionByCode('simple_product')->getProduct()->getId();
+        $prodId = $item->getProductType() == 'configurable' ? $item->getOptionByCode('simple_product')->getProduct()->getId() : $item->getProduct()->getId();
         $sku = $this->productRepository->getById($prodId)->getSku();
         foreach ($sourceCodes as $value) {
             $source = $this->sourceRepository->get($value);
@@ -621,7 +621,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
     protected function addShipAsIsItemsToPayload(array $items, array $packages)
     {
         foreach ($items as $item) {
-            $prodId = $item->getOptionByCode('simple_product')->getProduct()->getId();
+            $prodId = $item->getProductType() == 'configurable' ? $item->getOptionByCode('simple_product')->getProduct()->getId() : $item->getProduct()->getId();
             $product = $this->productRepository->getById($prodId);
             $qty = $item->getQty();
             $packages = $this->getShipAsIsItems($product, $packages, $qty);
@@ -690,7 +690,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $cartItems = $items;
         $this->items = [];
         foreach ($cartItems as $item) {
-            $prodId = $item->getOptionByCode('simple_product')->getProduct()->getId();
+            $prodId = $item->getProductType() == 'configurable' ? $item->getOptionByCode('simple_product')->getProduct()->getId() : $item->getProduct()->getId();
             $product = $this->productRepository->getById($prodId);
             if ($product->getDataByKey('ship_as_is') == 1) {
                 continue;
@@ -731,7 +731,7 @@ class FlagshipQuote extends \Magento\Shipping\Model\Carrier\AbstractCarrierOnlin
         $flag = 1; //no ship_as_is items in cart
 
         foreach ($items as $item) {
-            $prodId = $item->getOptionByCode('simple_product')->getProduct()->getId();
+            $prodId = $item->getProductType() == 'configurable' ? $item->getOptionByCode('simple_product')->getProduct()->getId() : $item->getProduct()->getId();
             $product = $this->productRepository->getById($prodId);
             $flag = $product->getDataByKey('ship_as_is') == 0 ? 1 : 0 ;
         }
