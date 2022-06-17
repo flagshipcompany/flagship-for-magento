@@ -51,6 +51,10 @@
                     <can_be_empty>1</can_be_empty>
                     <comment>FlagShip token must be set to select courier values</comment>
                 </field>
+                <field id="sort_order" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Sort Order</label>
+                    <validate>validate-number validate-zero-or-greater</validate>
+                </field>
             </group>
         </section>
     </system>
