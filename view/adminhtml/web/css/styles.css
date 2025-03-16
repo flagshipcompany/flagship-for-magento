@@ -13,3 +13,7 @@ body .admin__menu .item-manage > a::before{
 	font-family: 'flagship' !important;
 	content: "\e903";
 }
+
+#row_carriers_flagship_boxes .value {
+  width: 66% !important;
+}

@@ -9,49 +9,57 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Rates will not be available unless FlagShip is configured with a valid token</comment>
                 </field>
-
-                <field id="insuranceflag" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Insurance on all shipments</label>
+                <field id="env" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Sandbox Environment</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="force_residential" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Make all shipments to residential addresses</label>
+                <field id="token" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Flagship token</label>
+                </field>
+                <field id="insurance" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Insure shipments</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="taxes_included" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Taxes to be included in shipping prices</label>
+                <field id="residential" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Residential Shipments</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="flat_fee" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="packing" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Use Packing Api</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="boxes" translate="label" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Boxes(in,lbs)</label>
+                    <frontend_model>Flagship\Shipping\Block\Adminhtml\Form\Field\Boxes</frontend_model>
+                    <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
+                </field>
+                <field id="taxes" translate="label" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Include taxes in shipping prices</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="flat_fee" translate="label" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Additional flat fee on courier rates</label>
                     <comment>Adds a fixed amount on top of shipping rates</comment>
                 </field>
-                <field id="markup" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="markup" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Markup percentage on courier rates</label>
                     <comment>Adds a percentage on top of shipping rates</comment>
                 </field>
-                <field id="delivery_date" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="delivery_date" translate="label" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Show Estimated Delivery Date</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-
-                <field id="ltl_email" translate="label" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Logistics email should be sent to</label>
-                    <comment>Add multiple email addresses separated by comma</comment>
-                </field>
-                
-                
-                <field id="pick_and_pack_price" translate="label" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Add price for each box</label>
+                <field id="logging" translate="label" type="select" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Enable Logging</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="allowed_methods" translate="label" type="multiselect" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
+                <field id="allowed_methods" translate="label" type="multiselect" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
                     <label>Allowed Methods</label>
                     <source_model>Flagship\Shipping\Model\Carrier\FlagshipAllowedMethods</source_model>
                     <can_be_empty>1</can_be_empty>
                     <comment>FlagShip token must be set to select courier values</comment>
                 </field>
-                <field id="sort_order" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="sort_order" translate="label" type="text" sortOrder="140" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Sort Order</label>
                     <validate>validate-number validate-zero-or-greater</validate>
                 </field>

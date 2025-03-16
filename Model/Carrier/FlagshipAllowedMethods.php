@@ -15,6 +15,7 @@ class FlagshipAllowedMethods implements \Magento\Framework\Option\ArrayInterface
 
     public function toOptionArray() : array
     {
+        return [];
         return $this->allowedMethods->allowedMethods();
     }
 }

@@ -392,7 +392,7 @@ class Index extends \Magento\Backend\App\Action
         ];
 
         $insuranceValue = $this->getInsuranceValue();
-        if ($store->getConfig('carriers/flagship/insuranceflag') && $insuranceValue != 0) {
+        if ($store->getConfig('carriers/flagship/insurance') && $insuranceValue != 0) {
             $options['insurance'] = [
                 'value' => $insuranceValue,
                 'description' => 'insurance'
@@ -432,7 +432,7 @@ class Index extends \Magento\Backend\App\Action
           'is_commercial' => true
         ];
 
-        if ($store->getConfig('carriers/flagship/force_residential')) {
+        if ($store->getConfig('carriers/flagship/residential')) {
             $to['is_commercial'] = false;
         }
         return $to;

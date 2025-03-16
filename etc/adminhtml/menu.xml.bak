@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="Flagship_Shipping::settings"
+            title="Plugin Settings"
+            translate="title"
+            module="Flagship_Shipping"
+            sortOrder="10"
+            resource="Flagship_Shipping::settings"
+            parent="Flagship_Shipping::manage"
+        />
+        <add id="Flagship_Shipping::flagship"
+            title="On FlagShip"
+            translate="title"
+            module="Flagship_Shipping"
+            sortOrder="10"
+            resource="Flagship_Shipping::flagship"
+            parent="Flagship_Shipping::manage"
+        />
+        <add
+            id="Flagship_Shipping::show_log" 
+            title="Display Logs" 
+            translate="title" 
+            module="Flagship_Shipping" 
+            parent="Flagship_Shipping::settings"
+            sortOrder="50" 
+            action="shipping/showlog" 
+            resource="Flagship_Shipping::showlog"
+        />
+    </menu>
+</config>
