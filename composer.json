@@ -9,7 +9,7 @@
   ],
   "require": {
     "php": ">=8.0",
-    "flagshipcompany/flagship-api-sdk": "^1.1"
+    "flagshipcompany/flagship-api-sdk": "dev-update-dependencies"
   },
   "autoload": {
     "files": [ "registration.php" ],
