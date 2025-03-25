@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Flagship\Shipping\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -74,6 +76,12 @@ class Configuration
     public function getAllowedMethods(): array
     {
         return explode(',', $this->scopeConfig->getValue('carriers/flagship/allowed_methods'));
+    }
+
+    public function getApiUrl(): string
+    {
+        $env = $this->getEnvironment();
+        return $env == '1' ? 'https://test-api.smartship.io' : 'https://api.smartship.io';
     }
 
 }

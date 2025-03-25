@@ -7,7 +7,7 @@ namespace Flagship\Shipping\Model\Carrier;
 use Flagship\Shipping\Exceptions\AvailableServicesException;
 use Flagship\Shipping\Exceptions\GetShipmentListException;
 use Flagship\Shipping\Exceptions\QuoteException;
-use Flagship\Shipping\Flagship;
+use Flagship\Shipping\Flagship as FlagshipSdk;
 use Flagship\Shipping\Model\Configuration;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Quote\Model\Quote\Address\RateRequest;
@@ -36,11 +36,10 @@ class FlagshipQuote extends AbstractCarrier implements CarrierInterface
         LoggerInterface $logger,
         ResultFactory $rateResultFactory,
         MethodFactory $rateMethodFactory,
-        Configuration $config,
+        protected Configuration $configuration,
         array $data = []
     ) {
         parent::__construct($scopeConfig, $rateErrorFactory, $logger, $data);
-
         $this->rateResultFactory = $rateResultFactory;
         $this->rateMethodFactory = $rateMethodFactory;
     }
@@ -68,8 +67,6 @@ class FlagshipQuote extends AbstractCarrier implements CarrierInterface
             $status->setCarrierTitle('Your FlagShip shipment is still Unconfirmed');
         }
         if (stristr($tracking, 'Unconfirmed') === false
-            && stristr($tracking, 'Free Shipping') == false
-            && stristr($tracking, 'Consolidated Weekly Shipping') == false
             && $this->getShipmentFromFlagship($tracking) != NULL
         ) { //shipment confirmed
             $shipment = $this->getShipmentFromFlagship($tracking);
@@ -79,11 +76,7 @@ class FlagshipQuote extends AbstractCarrier implements CarrierInterface
             $url = $this->getTrackingUrl($courierName, $trackingNumber);
         }
 
-        if ( $this->getShipmentFromFlagship($tracking) == NULL || (stristr($tracking, 'Unconfirmed') === false
-            && (
-                stristr($tracking, 'Free Shipping') !== false
-                || stristr($tracking, 'Consolidated Weekly Shipping') !== false
-            ) )
+        if ( $this->getShipmentFromFlagship($tracking) == NULL || (stristr($tracking, 'Unconfirmed') === false)
         ) {
             $url = 'https://www.flagshipcompany.com';
             $tracking = "Tracking is not available for this shipment. Please check with FlagShip";
@@ -107,10 +100,16 @@ class FlagshipQuote extends AbstractCarrier implements CarrierInterface
     public function allowedMethods() : array
     {
         if (empty($this->getToken())) {
+            error_log(strval(__LINE__));
             return [];
         }
+        error_log(strval(__LINE__));
         $token = $this->getToken();
-        $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
+        $smartshipUrl = $this->configuration->getApiUrl();
+        var_dump($smartshipUrl); 
+        var_dump($token);
+        // die();
+        $flagship = new FlagshipSdk($token, $smartshipUrl);
         $storeName = $this->_scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
 
@@ -413,11 +412,11 @@ class FlagshipQuote extends AbstractCarrier implements CarrierInterface
 
     protected function getToken() : ?string
     {
-        return null;
         try {
-            $token = isset($this->flagship->getSettings()["token"]) ? $this->flagship->getSettings()["token"] : null;
+            $token = $this->configuration->getToken() ? $this->configuration->getToken() : null;
             return $token;
         } catch (\Exception $e) {
+            return null;
             // $this->flagship->logError($e->getMessage());
         }
     }
@@ -668,8 +667,8 @@ class FlagshipQuote extends AbstractCarrier implements CarrierInterface
         $token = $this->getToken();
         $storeName = $this->_scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
-
-        $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
+        $smartshipUrl = $this->configuration->getApiUrl();
+        $flagship = new Flagship($token, $smartshipUrl, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
         // $this->flagship->logInfo("Quotes payload sent to FlagShip: ".json_encode($payload));
         $quoteRequest = $flagship->createQuoteRequest($payload)->setStoreName($storeName);
         try {
@@ -687,8 +686,8 @@ class FlagshipQuote extends AbstractCarrier implements CarrierInterface
         $token = $this->getToken();
         $storeName = $this->_scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
-
-        $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
+        $smartshipUrl = $this->configuration->getApiUrl();
+        $flagship = new Flagship($token, $smartshipUrl, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
         $shipmentsList = $flagship->getShipmentListRequest()->setStoreName($storeName);
         try {
             $shipments = $shipmentsList->execute();
@@ -704,18 +703,18 @@ class FlagshipQuote extends AbstractCarrier implements CarrierInterface
     protected function getConfiguration(string $key) : ?string
     {
         $configData = [
-            'isEnabled' => $this->config->isEnabled(),
-            'token' => $this->config->getToken(),
-            'insurance' => $this->config->getInsurance(),
-            'residential' => $this->config->getResidential(),
-            'packing' => $this->config->isPackingEnabled(),
-            'boxes' => $this->config->getBoxes(),
-            'taxes' => $this->config->getTaxes(),
-            'markup' => $this->config->getMarkup(),
-            'flat_fee' => $this->config->getFee(),
-            'delivery_date' => $this->config->getDisplayDelivery(),
-            'allowed_methods' => $this->config->getAllowedMethods(),
-            'logging' => $this->config->getLogging()
+            'isEnabled' => $this->configuration->isEnabled(),
+            'token' => $this->configuration->getToken(),
+            'insurance' => $this->configuration->getInsurance(),
+            'residential' => $this->configuration->getResidential(),
+            'packing' => $this->configuration->isPackingEnabled(),
+            'boxes' => $this->configuration->getBoxes(),
+            'taxes' => $this->configuration->getTaxes(),
+            'markup' => $this->configuration->getMarkup(),
+            'flat_fee' => $this->configuration->getFee(),
+            'delivery_date' => $this->configuration->getDisplayDelivery(),
+            'allowed_methods' => $this->configuration->getAllowedMethods(),
+            'logging' => $this->configuration->getLogging()
         ];
 
         return $configData[$key];

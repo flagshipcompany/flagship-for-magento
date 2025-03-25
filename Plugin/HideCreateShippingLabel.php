@@ -4,13 +4,15 @@ namespace Flagship\Shipping\Plugin;
 
 use \Flagship\Shipping\Flagship;
 use \Flagship\Shipping\GetShipmentsListException;
+use Flagship\Shipping\Model\Configuration;
 
 class HideCreateShippingLabel
 {
     public function __construct(
         \Flagship\Shipping\Helper\Flagship $flagship,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Flagship\Shipping\Logger\Logger $logger
+        \Flagship\Shipping\Logger\Logger $logger,
+        protected Configuration $configuration
     ) {
         $this->logger = $logger;
         $this->flagship = $flagship;
@@ -55,7 +57,8 @@ class HideCreateShippingLabel
     {
         $storeName = $this->scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
-        $flagship = new Flagship($this->flagship->getSettings()["token"], SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
+        $token = $this->configuration->getToken();
+        $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
         $request = $flagship->getShipmentByIdRequest($id)->setStoreName($storeName)->setOrderId($order->getId());
         $shipment = $request->execute();
         return $shipment;
@@ -112,8 +115,8 @@ class HideCreateShippingLabel
     {
         $storeName = $this->scopeConfig->getValue('general/store_information/name');
         $storeName = $storeName == null ? '' : $storeName;
-
-        $flagship = new Flagship($this->flagship->getSettings()["token"], SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
+        $token = $this->configuration->getToken();
+        $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
 
         try {
             $shipmentList = $flagship->getShipmentListRequest()->setStoreName($storeName)->setOrderId($this->order->getId());

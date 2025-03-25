@@ -5,7 +5,7 @@
       <plugin name="sendToFlagshipButton" type="Flagship\Shipping\Plugin\SendToFlagshipButton" disabled="false" />
     </type>
     <type name="Magento\Shipping\Block\Adminhtml\View">
-    	<plugin name="printShippingLabel" type="Flagship\Shipping\Plugin\HideCreateShippingLabel" disabled="false" />
+    	<plugin name="hideShippingLabel" type="Flagship\Shipping\Plugin\HideCreateShippingLabel" disabled="false" />
     </type>
     <type name="Magento\Sales\Block\Adminhtml\Order\View">
         <plugin name="updateTrackingDetails" type="Flagship\Shipping\Plugin\UpdateTrackingDetails" />

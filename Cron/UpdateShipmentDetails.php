@@ -4,19 +4,19 @@ namespace Flagship\Shipping\Cron;
 
 use \Flagship\Shipping\Flagship;
 use Flagship\Shipping\Exceptions\GetShipmentByIdException;
+use Flagship\Shipping\Model\Configuration;
+use Magento\Sales\Model\Order\Shipment;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Flagship\Shipping\Plugin\HideCreateShippingLabel;
 
 class UpdateShipmentDetails
 {
     public function __construct(
-        \Magento\Sales\Model\Order\Shipment $shipment,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Flagship\Shipping\Plugin\HideCreateShippingLabel $tracking,
-        \Flagship\Shipping\Helper\Flagship $flagship
+        protected Shipment $shipment,
+        protected ScopeConfigInterface $scopeConfig,
+        protected HideCreateShippingLabel $tracking,
+        protected Configuration $configuration
     ) {
-        $this->shipment = $shipment;
-        $this->tracking = $tracking;
-        $this->flagship = $flagship;
-        $this->scopeConfig = $scopeConfig;
     }
 
     public function execute()
@@ -32,7 +32,7 @@ class UpdateShipmentDetails
 
     protected function isShipmentConfirmed(int $flagshipShipmentId, \Magento\Sales\Model\Order\Shipment $shipment) : int
     {
-        $token = $this->flagship->getSettings()["token"];
+        $token = $this->configuration->getToken();
         $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
         $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
@@ -44,7 +44,7 @@ class UpdateShipmentDetails
             }
             return 0;
         } catch (GetShipmentByIdException $e) {
-            $this->flagship->logError($e->getMessage());
+            // $this->flagship->logError($e->getMessage());
             return 1;
         }
     }

@@ -5,63 +5,56 @@ namespace Flagship\Shipping\Controller\Adminhtml\PrepareShipment;
 use Flagship\Shipping\Exceptions\EditShipmentException;
 use Flagship\Shipping\Exceptions\PrepareShipmentException;
 use Flagship\Shipping\Flagship;
+use Flagship\Shipping\Model\Configuration;
+use Magento\Backend\App\Action\Context;
+use Magento\Sales\Model\OrderRepository;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Directory\Model\RegionFactory;
+use Magento\Sales\Model\Convert\Order;
+use Magento\Sales\Model\Order\Shipment\TrackFactory;
+use Flagship\Shipping\Logger\Logger;
+use Magento\InventorySalesAdminUi\Model\GetSalableQuantityDataBySku;
+use Magento\Inventory\Model\GetSourceCodesBySkus;
+use Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku;
+use Magento\Inventory\Model\SourceRepository;
+use Flagship\Shipping\Block\DisplayPacking;
+use Magento\Sales\Api\Data\ShipmentExtensionFactory;
+use Magento\Framework\Translate\Inline\StateInterface;
+use Magento\Framework\Mail\Template\TransportBuilder;
+use Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId;
+use Flagship\Shipping\Model\Carrier\FlagshipQuote;
+use Magento\Catalog\Model\ProductRepository;
+use Magento\Customer\Api\AddressRepositoryInterface;
 
 class Index extends \Magento\Backend\App\Action
 {
     protected $orderId;
-    protected $orderRepository;
-    protected $scopeConfig;
-    protected $regionfactory;
-    protected $convertOrder;
-    protected $trackFactory;
-    protected $_logger;
-    protected $loggingEnabled;
-    protected $displayPackings;
-    protected $flagship;
-    protected $productRepository;
 
     public function __construct(
-        \Magento\Backend\App\Action\Context $context,
-        \Magento\Sales\Model\OrderRepository $orderRepository,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Magento\Directory\Model\RegionFactory $regionFactory,
-        \Magento\Sales\Model\Convert\Order $convertOrder,
-        \Magento\Sales\Model\Order\Shipment\TrackFactory $trackFactory,
-        \Flagship\Shipping\Logger\Logger $logger,
-        \Magento\InventorySalesAdminUi\Model\GetSalableQuantityDataBySku $getSalableQuantityDataBySku,
-        \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
-        \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
-        \Magento\Inventory\Model\SourceRepository $sourceRepository,
-        \Flagship\Shipping\Block\DisplayPacking $displayPackings,
-        \Magento\Sales\Api\Data\ShipmentExtensionFactory $shipmentExtensionFactory,
-        \Flagship\Shipping\Helper\Flagship $flagship,
-        \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
-        \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
-        \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
-        \Flagship\Shipping\Model\Carrier\FlagshipQuote $flagshipQuote,
-        \Magento\Catalog\Model\ProductRepository $productRepository,
-        \Magento\Customer\Api\AddressRepositoryInterface $addressRepository
+        protected Context $context,
+        protected OrderRepository $orderRepository,
+        protected ScopeConfigInterface $scopeConfig,
+        protected RegionFactory $regionFactory,
+        protected Order $convertOrder,
+        protected TrackFactory $trackFactory,
+        protected Logger $logger,
+        protected GetSalableQuantityDataBySku $getSalableQuantityDataBySku,
+        protected GetSourceCodesBySkus $getSourceCodesBySkus,
+        protected GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
+        protected SourceRepository $sourceRepository,
+        protected DisplayPacking $displayPackings,
+        protected ShipmentExtensionFactory $shipmentExtensionFactory,
+        protected Flagship $flagship,
+        protected StateInterface $inlineTranslation,
+        protected TransportBuilder $transportBuilder,
+        protected GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
+        protected FlagshipQuote $flagshipQuote,
+        protected ProductRepository $productRepository,
+        protected AddressRepositoryInterface $addressRepository,
+        protected Configuration $configuration
     ) {
-        $this->orderRepository = $orderRepository;
-        $this->scopeConfig = $scopeConfig;
-        $this->regionFactory = $regionFactory;
-        $this->convertOrder = $convertOrder;
-        $this->trackFactory = $trackFactory;
         $this->_logger = $logger;
-        $this->displayPackings = $displayPackings;
-        $this->flagship = $flagship;
-        $this->loggingEnabled = array_key_exists('log', $this->flagship->getSettings()) ? $this->flagship->getSettings()["log"] : 1;
-        $this->getSalableQuantityDataBySku = $getSalableQuantityDataBySku;
-        $this->getSourceCodesBySkus = $getSourceCodesBySkus;
-        $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
-        $this->shipmentExtensionFactory = $shipmentExtensionFactory;
-        $this->sourceRepository = $sourceRepository;
-        $this->inlineTranslation = $inlineTranslation;
-        $this->transportBuilder = $transportBuilder;
-        $this->getSourceCodeByShipmentId = $getSourceCodeByShipmentId;
         $this->flagshipQuote = $flagshipQuote;
-        $this->productRepository = $productRepository;
-        $this->addressRepository = $addressRepository;
         parent::__construct($context);
     }
 
@@ -77,7 +70,7 @@ class Index extends \Magento\Backend\App\Action
             $shipmentId = $this->getRequest()->getParam('shipmentId');
             $payload = $this->getUpdatePayload($flagship, $shipmentId);
 
-            $this->flagship->logInfo('Updating FlagShip Shipment#' . $shipmentId . ' for Order#' . $orderId);
+            // $this->flagship->logInfo('Updating FlagShip Shipment#' . $shipmentId . ' for Order#' . $orderId);
             $this->updateShipment($flagship, $payload, $shipmentId);
             return $this->_redirect($this->_redirect->getRefererUrl());
         }
@@ -93,7 +86,7 @@ class Index extends \Magento\Backend\App\Action
             return $this->_redirect($this->_redirect->getRefererUrl());
         }
 
-        $this->flagship->logInfo('Preparing FlagShip Shipment for Order#' . $orderId);
+        // $this->flagship->logInfo('Preparing FlagShip Shipment for Order#' . $orderId);
 
         foreach ($orderItems as $orderItem) {
             $payload = $this->getPayload($orderItem);
@@ -105,7 +98,7 @@ class Index extends \Magento\Backend\App\Action
 
     public function getToken() : ?string
     {
-        return $this->flagship->getSettings()["token"];
+        return $this->configuration->getToken();
     }
 
     public function getOrder() : \Magento\Sales\Model\Order
@@ -263,7 +256,8 @@ class Index extends \Magento\Backend\App\Action
           'type' => 'package',
           'items' => $packageItems
         ];
-        if ($this->flagship->getSettings()["packings"] && !is_null($this->getPackingBoxes($orderItem['source']->getSourceCode()))) {
+        $packings = $this->configuration->isPackingEnabled();
+        if ($packings && !is_null($this->getPackingBoxes($orderItem['source']->getSourceCode()))) {
             $packages['items'] = $this->getPayloadItems($orderItem);
         }
 
@@ -536,10 +530,10 @@ class Index extends \Magento\Backend\App\Action
             $orderId = $this->getRequest()->getParam('order_id');
             $trackingid = $response->getTrackingNumber();
             $url = $this->getUrl('shipping/convertShipment', ['shipmentId'=> $id, 'order_id' => $orderId]);
-            $this->flagship->logInfo('FlagShip Shipment# ' . $id . ' associated with Order# ' . $orderId . ' is Updated. Response Code : ' . $update->getResponseCode());
+            // $this->flagship->logInfo('FlagShip Shipment# ' . $id . ' associated with Order# ' . $orderId . ' is Updated. Response Code : ' . $update->getResponseCode());
             return $this->messageManager->addSuccess(__('FlagShip Shipment Updated : <a target="_blank" href="' . $url . '">' . $id . '</a>'));
         } catch (EditShipmentException $e) {
-            $this->flagship->logError($e->getMessage() . ' Response Code : ' . $update->getResponseCode());
+            // $this->flagship->logError($e->getMessage() . ' Response Code : ' . $update->getResponseCode());
             return $this->messageManager->addErrorMessage(__(ucfirst($e->getMessage())));
         }
     }
@@ -550,17 +544,17 @@ class Index extends \Magento\Backend\App\Action
             $orderId = $this->getOrder()->getId();
             $storeName = $this->scopeConfig->getValue('general/store_information/name') == null ? '' : $this->scopeConfig->getValue('general/store_information/name');
 
-            $this->flagship->logInfo("Prepare Shipment payload sent to FlagShip: ".json_encode($payload));
+            // $this->flagship->logInfo("Prepare Shipment payload sent to FlagShip: ".json_encode($payload));
             $request = $flagship->prepareShipmentRequest($payload)->setStoreName($storeName)->setOrderId($orderId)->setOrderLink($this->getUrl('sales/order/view', ['order_id' => $orderId]));
             $response = $request->execute();
             $id = $response->shipment->id;
             $this->setFlagshipShipmentId($id, $orderItem);
             $orderId = $this->getRequest()->getParam('order_id');
             $url = $this->getUrl('shipping/convertShipment', ['shipmentId'=> $id, 'order_id' => $orderId]);
-            $this->flagship->logInfo('FlagShip Shipment #' . $id . ' prepared for Order# ' . $orderId . '. Response Code : ' . $request->getResponseCode());
+            // $this->flagship->logInfo('FlagShip Shipment #' . $id . ' prepared for Order# ' . $orderId . '. Response Code : ' . $request->getResponseCode());
             return $this->messageManager->addSuccess(__('FlagShip Shipment Number:' . $id . ' . Click <a href="' . $url . '">here</a> to confirm the shipment'));
         } catch (PrepareShipmentException $e) {
-            $this->flagship->logError($e->getMessage() . '. Response Code : ' . $request->getResponseCode());
+            // $this->flagship->logError($e->getMessage() . '. Response Code : ' . $request->getResponseCode());
             return $this->messageManager->addErrorMessage(__(ucfirst($e->getMessage())));
         }
     }
@@ -749,7 +743,7 @@ class Index extends \Magento\Backend\App\Action
             $shipment->save();
             return $shipment;
         } catch (\Exception $e) {
-            $this->flagship->logError($e->getMessage());
+            // $this->flagship->logError($e->getMessage());
             throw new \Magento\Framework\Exception\LocalizedException(__($e->getMessage()));
         }
     }

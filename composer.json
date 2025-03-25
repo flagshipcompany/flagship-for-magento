@@ -8,8 +8,7 @@
     "AFL-3.0"
   ],
   "require": {
-    "php": ">=8.0",
-    "flagshipcompany/flagship-api-sdk": "dev-update-dependencies"
+    "php": ">=8.0"
   },
   "autoload": {
     "files": [ "registration.php" ],

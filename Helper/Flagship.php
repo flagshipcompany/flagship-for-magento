@@ -3,6 +3,7 @@ namespace Flagship\Shipping\Helper;
 
 use Flagship\Shipping\Logger\Logger;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Flagship\Shipping\Model\Configuration;
 
 class Flagship
 {
@@ -11,7 +12,8 @@ class Flagship
 
     public function __construct(
         protected Logger $logger,
-        protected ScopeConfigInterface $scopeConfig
+        protected ScopeConfigInterface $scopeConfig,
+        protected Configuration $configuration
     ) {
         if (!defined('SMARTSHIP_WEB_URL')) {
             $this->getEnv();
@@ -53,7 +55,7 @@ class Flagship
 
     private function getEnv() : int
     {
-        if (isset($this->getSettings()['test_env']) && $this->getSettings()['test_env'] == 1) {
+        if (($this->configuration->getEnvironment()) && $this->configuration->getEnvironment() == 1) {
             define('SMARTSHIP_WEB_URL', 'https://test-smartshipng.flagshipcompany.com');
             define('SMARTSHIP_API_URL', 'https://test-api.smartship.io');
             return 0;

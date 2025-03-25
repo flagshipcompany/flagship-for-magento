@@ -4,42 +4,39 @@ namespace Flagship\Shipping\Block;
 
 use Flagship\Shipping\Exceptions\PackingException;
 use Flagship\Shipping\Flagship;
+use Flagship\Shipping\Model\Configuration;
+use Magento\Framework\View\Element\Template\Context;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Sales\Model\OrderRepository;
+use Magento\Inventory\Model\GetSourceCodesBySkus;
+use Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku;
+use Magento\Inventory\Model\SourceRepository;
+use Magento\Sales\Model\Order\ShipmentRepository;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Message\ManagerInterface;
+use Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId;
+use Magento\Catalog\Model\ProductRepository;
+use Magento\Sales\Model\Order\ItemRepository;
 
 class DisplayPacking extends \Magento\Framework\View\Element\Template
 {
-    protected $resource;
-    protected $flagship;
-
     public function __construct(
-        \Magento\Framework\View\Element\Template\Context $context,
-        \Magento\Framework\App\ResourceConnection $resource,
-        \Magento\Sales\Model\OrderRepository $orderRepository,
-        \Flagship\Shipping\Helper\Flagship $flagship,
-        \Magento\Inventory\Model\GetSourceCodesBySkus $getSourceCodesBySkus,
-        \Magento\InventorySourceDeductionApi\Model\GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
-        \Magento\Inventory\Model\SourceRepository $sourceRepository,
-        \Magento\Sales\Model\Order\ShipmentRepository $shipmentRepository,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Magento\Framework\Message\ManagerInterface $messageManager,
-        \Magento\InventoryShipping\Model\ResourceModel\ShipmentSource\GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
-        \Magento\Catalog\Model\ProductRepository $productRepository,
-        \Flagship\Shipping\Model\AddBoxes $boxes,
-        \Magento\Sales\Model\Order\ItemRepository $orderItemRepository
+        protected Context $context,
+        protected ResourceConnection $resource,
+        protected OrderRepository $orderRepository,
+        protected Flagship $flagship,
+        protected GetSourceCodesBySkus $getSourceCodesBySkus,
+        protected GetSourceItemBySourceCodeAndSku $getSourceItemBySourceCodeAndSku,
+        protected SourceRepository $sourceRepository,
+        protected ShipmentRepository $shipmentRepository,
+        protected ScopeConfigInterface $scopeConfig,
+        protected ManagerInterface $messageManager,
+        protected GetSourceCodeByShipmentId $getSourceCodeByShipmentId,
+        protected ProductRepository $productRepository,
+        protected ItemRepository $orderItemRepository,
+        protected Configuration $configuration
     ) {
         parent::__construct($context);
-        $this->resource = $resource;
-        $this->orderRepository = $orderRepository;
-        $this->flagship = $flagship;
-        $this->shipmentRepository = $shipmentRepository;
-        $this->getSourceCodesBySkus = $getSourceCodesBySkus;
-        $this->getSourceItemBySourceCodeAndSku = $getSourceItemBySourceCodeAndSku;
-        $this->sourceRepository = $sourceRepository;
-        $this->messageManager = $messageManager;
-        $this->scopeConfig = $scopeConfig;
-        $this->getSourceCodeByShipmentId = $getSourceCodeByShipmentId;
-        $this->productRepository = $productRepository;
-        $this->boxes = $boxes;
-        $this->orderItemRepository = $orderItemRepository;
     }
 
     public function getPacking(int $shipmentId=0) : ?array
@@ -174,8 +171,9 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
 
     protected function getBoxesCollection() : array
     {
-        $boxes = $this->boxes->getCollection()->toArray()['items'];
-        return $boxes;
+        return [];
+        // $boxes = $this->boxes->getCollection()->toArray()['items'];
+        // return $boxes;
     }
 
     protected function getSourceCodesForShipmentItems($shipmentId)
@@ -209,7 +207,7 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
 
     public function isPackingEnabled() : int
     {
-        return $this->flagship->getSettings()["packings"];
+        return $this->configuration->isPackingEnabled();
     }
 
     public function getPayload(array $items) : ?array
@@ -254,8 +252,8 @@ class DisplayPacking extends \Magento\Framework\View\Element\Template
             return null;
         }
         $this->flagship->logInfo("Packings payload: " . json_encode($payload));
-
-        $flagship = new Flagship($this->flagship->getSettings()["token"], SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
+        $token = $this->configuration->getToken();
+        $flagship = new Flagship($token, SMARTSHIP_API_URL, FLAGSHIP_MODULE, FLAGSHIP_MODULE_VERSION);
 
         try {
             $packingRequest = $flagship->packingRequest($payload)->setStoreName('Magento - ' . $this->scopeConfig->getValue('general/store_information/name'));
