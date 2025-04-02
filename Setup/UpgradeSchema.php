@@ -8,7 +8,7 @@ use Magento\Framework\Setup\SchemaSetupInterface;
 
 class UpgradeSchema implements UpgradeSchemaInterface
 {
-    public function upgrade(SchemaSetupInterface $setup, ModuleContextInterface $context) : bool
+    public function upgrade(SchemaSetupInterface $setup, ModuleContextInterface $context): bool
     {
         $setup->startSetup();
         $tableName = $setup->getTable('sales_shipment');

@@ -45,6 +45,10 @@
                     <label>Markup percentage on courier rates</label>
                     <comment>Adds a percentage on top of shipping rates</comment>
                 </field>
+                <field id="customer_email_tracking" translate="label" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Use Customer Email for tracking</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
                 <!-- <field id="delivery_date" translate="label" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Show Estimated Delivery Date</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
@@ -59,42 +63,6 @@
                     <can_be_empty>1</can_be_empty>
                     <comment>FlagShip token must be set to select courier values</comment>
                 </field>
-                
-                <!-- <field id="shipper_address_company_name" translate="label" type="text" sortOrder="139" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Company Name</label>
-                </field>
-                <field id="shipper_address_name" translate="label" type="text" sortOrder="140" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Name</label>
-                </field>
-                <field id="shipper_address_line1" translate="label" type="text" sortOrder="150" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Address Line 1</label>
-                </field>
-                <field id="shipper_address_line2" translate="label" type="text" sortOrder="160" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Address Line 2</label>
-                    <can_be_empty>1</can_be_empty>
-                </field>
-                <field id="shipper_address_city" translate="label" type="text" sortOrder="170" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper City</label>
-                </field>
-                <field id="shipper_address_postal_code" translate="label" type="text" sortOrder="180" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Postal Code</label>
-                </field>
-                <field id="shipper_address_country" translate="label" type="text" sortOrder="190" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Country</label>
-                    
-                </field>
-                <field id="shipper_address_province" translate="label" type="text" sortOrder="200" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Province</label>
-                </field>
-                <field id="shipper_address_phone" translate="label" type="text" sortOrder="210" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Phone</label>
-                </field>
-                <field id="shipper_address_email" translate="label" type="text" sortOrder="220" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipper Email</label>
-                    <can_be_empty>1</can_be_empty>
-                    <validate>email</validate>
-                    <comment>Shipper email will be used as tracking emails</comment>
-                </field> -->
                 <field id="sort_order" translate="label" type="text" sortOrder="900" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Sort Order</label>
                     <validate>validate-number validate-zero-or-greater</validate>

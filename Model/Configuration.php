@@ -10,7 +10,8 @@ class Configuration
 {
     public function __construct(
         protected ScopeConfigInterface $scopeConfig
-    ){}
+    ) {
+    }
 
     public function isEnabled(): bool
     {
@@ -79,6 +80,11 @@ class Configuration
         return explode(',', $this->scopeConfig->getValue('carriers/flagship/allowed_methods'));
     }
 
+    public function useCustomerEmailForTracking(): bool
+    {
+        return (bool) $this->scopeConfig->getValue('carriers/flagship/customer_email_tracking');
+    }
+
     public function getApiUrl(): string
     {
         $testEnv = $this->getEnvironment();
@@ -88,8 +94,8 @@ class Configuration
     public function getUrl(): string
     {
         $testEnv = $this->getEnvironment();
-        return $testEnv == '1' 
-            ? 'https://test-smartshipng.flagshipcompany.com' 
+        return $testEnv == '1'
+            ? 'https://test-smartshipng.flagshipcompany.com'
             : 'https://smartship-ng.flagshipcompany.com';
     }
 

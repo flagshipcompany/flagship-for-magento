@@ -14,11 +14,11 @@ use Flagship\Shipping\Service\ApiService;
 class ConfigChange implements ObserverInterface
 {
     public function __construct(
-        private RequestInterface $request, 
+        private RequestInterface $request,
         private WriterInterface $configWriter,
         private ApiService $apiService
-    )
-    {}
+    ) {
+    }
     public function execute(EventObserver $observer)
     {
         $fsParams = $this->request->getParam('groups');
@@ -28,12 +28,11 @@ class ConfigChange implements ObserverInterface
         $url = $testEnv == 1 ? 'https://test-api.smartship.io' : 'https://api.smartship.io';
         $response = $this->apiService->sendRequest('/check-token', $token, 'GET', [], $testEnv, $url);
 
-        if($response['status'] != 200){
+        if ($response['status'] != 200) {
             throw new InputException(__('Invalid Token'));
         }
-        
+
         // call apiservice for validate token request
         return $this;
     }
 }
-?>
