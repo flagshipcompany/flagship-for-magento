@@ -1,35 +1,37 @@
 # flagship-for-magento
 
-Magento2 module for FlagShip.
+Flagship shipping module for Magento 2.4.7.
 
-# Installation
+Overview
+==================
 
-Navigate to your Magento directory and execute the following commands
+Flagship for Magento provides you with real time shipping rates on your store during checkout.
 
-## Composer Install (Preferred)
+**Compatibility**
 
+| Flagship for Magento | **1.0** | **2.0** |
+|----------------------|---------|---------|
+| **Magento 2.3.0 - 2.3.7**      | ✓       |    |
+| **Magento 2.4.7**              |      | ✓       | 
+
+
+🛠️ Installation
+-------------
+**Using Composer**
+
+*Run the commands from the root of the Magento installation*
 ```
-composer require flagshipcompany/flagship-for-magento:^1.0
-composer update
-bin/magento module:enable Flagship_Shipping
-bin/magento setup:upgrade
+composer require flagshipcompany/flagship-for-magento
 ```
 
-## Directory Install
+**Using Zip**
+* Download the Zip File
+* Extract & upload the files to `/path/to/magento2/app/code/Flagship/Shipping/`
 
-Download flagship-for-magento.zip
-
+After installation by either means, enable the extension by running following commands (again from root of Magento2 installation):
 ```
-@MagentoRoot > composer require flagshipcompany/flagship-api-sdk:^1.1
-unzip flagship-for-magento.zip
-cd @MagentoRoot/app/code
-mkdir Flagship
-cd Flagship
-mkdir Shipping
-cd Shipping
-cp ~/flagship-for-magento/* .
-
-bin/magento setup:upgrade
+php bin/magento module:enable Flagship_Shipping --clear-static-content
+php bin/magento setup:upgrade
 ```
 
 # Setting Up FlagShip
@@ -40,8 +42,6 @@ Under FlagShip Configuration, set the API Token, Packing and Logging preferences
 
 Make sure that Store Address is set under Store > Configuration > General > Store Information
 
-Every source should be assigned an address. You can set it: Store > Sources > (Edit the source) > Address Data 
-
 Enable the shipping methods, Store > Configuration > Sales > Shipping Methods > FlagShip Shipping
 
 
@@ -49,34 +49,16 @@ Enable the shipping methods, Store > Configuration > Sales > Shipping Methods > 
 
 ## Shipping
 
-When a customer places an order, the selected shipping methods are shown and the customer can choose a shipping method. (Please note that all quotes are inclusive of taxes)
+When a customer places an order, the selected shipping methods are shown and the customer can choose a shipping method.
 
-To make a FlagShip shipment, Sales > Orders > Order# 123 > Ship > Send To FlagShip
+To make a FlagShip shipment, Sales > Orders > Order# 123 > Send To FlagShip
 
-Order# 123 > Shipments > Shipment# 0001 > Confirm FlagShip Shipment
+Order# 123 > Confirm FlagShip Shipment
 
-You can choose a different shipping method from the customer's selection while confirming the shipment.
+You can modify the shipment and choose a different shipping method from the customer's selection while confirming the shipment.
 
 Once the shipment is confirmed, you can print the shipping label, track the shipment.
 
 ## Exclude Taxes From Magento on Shipping
 
 Magento Backend > Stores > Configuration > Sales > Tax > Calculation Settings > Shipping Prices : Excluding Tax
-
-## Packing
-
-FlagShip > Packing Boxes.
-
-You can view a list of all the boxes that you have already set and add more boxes.
-
-FlagShip tells you which box should be used for packing which items.
-
-Sales > Orders > Order# 123 > Scroll down to FlagShip Shipping Details
-
-## Logs
-
-You can view logs for all FlagShip activity - FlagShip > Display logs
-
-## FlagShip
-
-You can Manage your FlagShip shipments, pickups and create pickups for your shipments from your Magento store.
