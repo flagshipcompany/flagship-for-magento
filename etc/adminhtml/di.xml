@@ -1,13 +1,6 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-
-    <type name="Magento\Shipping\Block\Adminhtml\Create">
-      <plugin name="sendToFlagshipButton" type="Flagship\Shipping\Plugin\SendToFlagshipButton" disabled="false" />
-    </type>
-    <type name="Magento\Shipping\Block\Adminhtml\View">
-    	<plugin name="hideShippingLabel" type="Flagship\Shipping\Plugin\HideCreateShippingLabel" disabled="false" />
-    </type>
     <type name="Magento\Sales\Block\Adminhtml\Order\View">
-        <plugin name="updateTrackingDetails" type="Flagship\Shipping\Plugin\UpdateTrackingDetails" />
+        <plugin name="fs_ship_button" type="Flagship\Shipping\Plugin\Adminhtml\Order\View\FlagshipButton" sortOrder="10" />
     </type>
 </config>

@@ -23,12 +23,12 @@ class Boxes extends AbstractFieldArray
 
     protected function _prepareToRender()
     {
-        $this->addColumn('box_name', ['label' => __('Name')]);
-        $this->addColumn('box_length', ['label' => __('Length')]);
-        $this->addColumn('box_width', ['label' => __('Width')]);
-        $this->addColumn('box_height', ['label' => __('Height')]);
-        $this->addColumn('box_weight', ['label' => __('Weight')]);
-        $this->addColumn('box_max_weight', ['label' => __('Max Weight')]);
+        $this->addColumn('box_model', ['label' => __('Name')]);
+        $this->addColumn('length', ['label' => __('Length')]);
+        $this->addColumn('width', ['label' => __('Width')]);
+        $this->addColumn('height', ['label' => __('Height')]);
+        $this->addColumn('weight', ['label' => __('Weight')]);
+        $this->addColumn('max_weight', ['label' => __('Max Weight')]);
         $this->_addAfter = false;
         $this->_addButtonLabel = __('Add Box');
     }

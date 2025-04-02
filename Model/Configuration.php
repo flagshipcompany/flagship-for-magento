@@ -45,7 +45,8 @@ class Configuration
     public function getBoxes(): array
     {
         $boxes = $this->scopeConfig->getValue('carriers/flagship/boxes');
-        return $boxes ? json_decode($boxes, true) : [];
+        $boxes = $boxes ? array_values(json_decode($boxes, true)) : [];
+        return $boxes;
     }
 
     public function getTaxes(): bool
@@ -80,8 +81,16 @@ class Configuration
 
     public function getApiUrl(): string
     {
-        $env = $this->getEnvironment();
-        return $env == '1' ? 'https://test-api.smartship.io' : 'https://api.smartship.io';
+        $testEnv = $this->getEnvironment();
+        return $testEnv == '1' ? 'https://test-api.smartship.io' : 'https://api.smartship.io';
+    }
+
+    public function getUrl(): string
+    {
+        $testEnv = $this->getEnvironment();
+        return $testEnv == '1' 
+            ? 'https://test-smartshipng.flagshipcompany.com' 
+            : 'https://smartship-ng.flagshipcompany.com';
     }
 
 }
