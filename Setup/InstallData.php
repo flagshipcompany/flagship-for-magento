@@ -17,41 +17,14 @@ class InstallData implements InstallDataInterface
         $this->eavSetupFactory = $eavSetupFactory;
     }
 
-    public function install(ModuleDataSetupInterface $setup, ModuleContextInterface $context) : bool
+    public function install(ModuleDataSetupInterface $setup, ModuleContextInterface $context): bool
     {
         $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
-
-        $eavSetup->addAttribute(
-            \Magento\Catalog\Model\Product::ENTITY,
-            'ship_as_is',
-            [
-                'type' => 'int',
-                'backend' => '',
-                'frontend' => '',
-                'label' => 'Ship As Is',
-                'input' => 'boolean',
-                'class' => '',
-                'source' => \Magento\Eav\Model\Entity\Attribute\Source\Boolean::class,
-                'global' => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
-                'visible' => true,
-                'required' => true,
-                'user_defined' => false,
-                'default' => '1',
-                'searchable' => false,
-                'filterable' => false,
-                'comparable' => false,
-                'visible_on_front' => false,
-                'used_in_product_listing' => false,
-                'unique' => false,
-                'apply_to' => ''
-            ]
-        );
-
 
         if (!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_length')) {
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
-                'length',
+                'fs_length',
                 [
                     'type' => 'varchar',
                     'backend' => '',
@@ -78,9 +51,9 @@ class InstallData implements InstallDataInterface
 
         if (!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_width')) {
             $eavSetup->addAttribute(
-            \Magento\Catalog\Model\Product::ENTITY,
-            'width',
-            [
+                \Magento\Catalog\Model\Product::ENTITY,
+                'fs_width',
+                [
                 'type' => 'varchar',
                 'backend' => '',
                 'frontend' => '',
@@ -101,14 +74,14 @@ class InstallData implements InstallDataInterface
                 'unique' => false,
                 'apply_to' => ''
             ]
-        );
+            );
         }
 
         if (!$eavSetup->getAttributeId(\Magento\Catalog\Model\Product::ENTITY, 'ts_dimensions_height')) {
             $eavSetup->addAttribute(
-            \Magento\Catalog\Model\Product::ENTITY,
-            'height',
-            [
+                \Magento\Catalog\Model\Product::ENTITY,
+                'fs_height',
+                [
                 'type' => 'varchar',
                 'backend' => '',
                 'frontend' => '',
@@ -129,7 +102,7 @@ class InstallData implements InstallDataInterface
                 'unique' => false,
                 'apply_to' => ''
             ]
-        );
+            );
         }
         return true;
     }
