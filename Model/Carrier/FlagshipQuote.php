@@ -171,6 +171,10 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
 
     public function collectRates($request)
     {
+        if (!$this->canCollectRates() || null === $request->getDestPostcode()) {
+            return $this->getErrorMessage();
+        }
+
         $cartItems = $request->getAllItems();
         $payload = $this->getPayload($cartItems, $request);
         $rates = $this->getRatesArray($payload);
@@ -245,7 +249,6 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
 
     protected function getRatesResult(array $rates): \Magento\Shipping\Model\Rate\Result
     {
-
         $result = $this->rateResultFactory->create();
         try {
             foreach ($rates as $rate) {
