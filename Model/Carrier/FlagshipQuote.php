@@ -94,7 +94,6 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
         return true;
     }
 
-    //TBD
     public function getTracking(string $tracking)
     {
         $result = $this->_trackFactory->create();
@@ -176,14 +175,15 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
         }
 
         $cartItems = $request->getAllItems();
+        $itemsValid = $this->validateItems($cartItems);
+        if (!$itemsValid) {
+            return $this->getErrorMessage();
+        }
+
         $payload = $this->getPayload($cartItems, $request);
         $rates = $this->getRatesArray($payload);
-
         if (empty($rates)) {
-            $error = $this->rateErrorFactory->create();
-            $error->setCarrier($this->_code);
-            $error->setErrorMessage(__('No rates available'));
-            return $this->getRatesResult([$error]);
+            return $this->getErrorMessage();
         }
         return $this->getRatesResult($rates);
     }
@@ -200,6 +200,39 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
         $lc = str_replace(['œ', 'Œ'], 'oe', $lc);
 
         return strtoupper($lc);
+    }
+
+    public function getItemsArray(array $items): array
+    {
+        $packingAndBoxes = $this->configuration->isPackingEnabled() && !empty($this->configuration->getBoxes());
+
+        if (!$packingAndBoxes) {
+            return [
+                [
+                    'width' => 1,
+                    'height' => 1,
+                    'length' => 1,
+                    'weight' => 1.00,
+                    'description' => 'Box unknown'
+                ]
+            ];
+        }
+
+        $packingsPayload = $this->getPayloadForPacking($items);
+        try {
+            $packingResponse = $this->apiService->sendRequest(
+                '/ship/packing',
+                $this->configuration->getToken(),
+                'POST',
+                $packingsPayload
+            );
+            $packages = $packingResponse['response']['content']['packages'];
+            $formattedPackages = $this->getFormattedPackages($packages);
+            return $formattedPackages;
+        } catch (\Exception $e) {
+            error_log($e->getMessage());
+            return [];
+        }
     }
 
     protected function skipIfItemIsDownloadable(array $orderItems, string $sourceCode, $item)
@@ -243,24 +276,25 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
     protected function getRatesArray(array $payload): array
     {
         $quotes = $this->getQuotes($payload);
-        $rates = $this->getRates($quotes);
-        return $rates;
+        if(!empty($quotes)) {
+            $rates = $this->getRates($quotes);
+            return $rates;
+        }
+
+        return [];
     }
 
-    protected function getRatesResult(array $rates): \Magento\Shipping\Model\Rate\Result
+    protected function getRatesResult(array $rates)
     {
         $result = $this->rateResultFactory->create();
         try {
             foreach ($rates as $rate) {
                 $result->append($this->prepareShippingMethods($rate));
             }
+
             return $result;
         } catch (\Magento\Framework\Exception\LocalizedException $e) {
-            $error = $this->rateErrorFactory->create();
-            $error->setCarrier($this->getCarrierCode());
-            $error->setErrorMessage($e->getMessage());
-            $result->append($error);
-            return $result;
+            return $this->getErrorMessage();
         }
     }
 
@@ -466,10 +500,12 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
         foreach ($items as $item) {
             $packingItems = $this->getPackingItems($item);
         }
+        $boxes = $this->configuration->getBoxes();
+        $boxes = !empty($boxes) ? $boxes : [];
 
         $payload = [
             "items" => $packingItems,
-            "boxes" => $this->configuration->getBoxes(),
+            "boxes" => $boxes,
             "units" => $this->getUnits()
         ];
 
@@ -484,20 +520,14 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
             : $item->getProduct()->getId();
 
         $product = $this->productRepository->getById($prodId);
-
-        $length = null === $product->getCustomAttribute('fs_length')
-            ? 1.0 : floatval($product->getCustomAttribute('fs_length')->getValue());
-        $width = null === $product->getCustomAttribute('fs_width')
-            ? 1.0 : floatval($product->getCustomAttribute('fs_width')->getValue());
-        $height = null === $product->getCustomAttribute('fs_height')
-            ? 1.0 : floatval($product->getCustomAttribute('fs_height')->getValue());
+        $dimensions = $this->getProductDimensions($product);
 
         for ($i = 0; $i < $item->getQty() || $i < $item->getQtyOrdered(); $i++) {
             $payloadItems[] = [
-                "length" => $length <= 0 ? 1 : $length,
-                "width" => $width <= 0 ? 1 : $width,
-                "height" => $height <= 0 ? 1 : $height,
-                "weight" => is_null($product->getWeight()) ? 1 : $product->getWeight(),
+                "length" => $dimensions['length'],
+                "width" => $dimensions['width'],
+                "height" => $dimensions['height'],
+                "weight" => $dimensions['weight'],
                 "description" => $product->getName()
             ];
         }
@@ -505,37 +535,33 @@ class FlagshipQuote extends AbstractCarrierOnline implements CarrierInterface
         return array_values($payloadItems);
     }
 
-    public function getItemsArray(array $items): array
+    protected function getProductDimensions($product)
     {
-        $isPackingEnabled = $this->configuration->isPackingEnabled();
+        $length = null === $product->getCustomAttribute('fs_length')
+            ? 1.0 : floatval($product->getCustomAttribute('fs_length')->getValue());
+        $width = null === $product->getCustomAttribute('fs_width')
+            ? 1.0 : floatval($product->getCustomAttribute('fs_width')->getValue());
+        $height = null === $product->getCustomAttribute('fs_height')
+            ? 1.0 : floatval($product->getCustomAttribute('fs_height')->getValue());
+        $weight = is_null($product->getWeight()) ? 1 : $product->getWeight();
 
-        if (!$isPackingEnabled) {
-            return [
-                [
-                    'width' => 1,
-                    'height' => 1,
-                    'length' => 1,
-                    'weight' => 1.00,
-                    'description' => 'Box unknown'
-                ]
-            ];
-        }
+        return [
+            'length' => $length <= 0 ? 1 : $length,
+            'width' => $width <= 0 ? 1 : $width,
+            'height' => $height <= 0 ? 1 : $height,
+            'weight' => $weight <= 0 ? 1 : $weight,
+        ];
+    }
 
-        $packingsPayload = $this->getPayloadForPacking($items);
-        try {
-            $packingResponse = $this->apiService->sendRequest(
-                '/ship/packing',
-                $this->configuration->getToken(),
-                'POST',
-                $packingsPayload
-            );
-            $packages = $packingResponse['response']['content']['packages'];
-            $formattedPackages = $this->getFormattedPackages($packages);
-            return $formattedPackages;
-        } catch (\Exception $e) {
-            error_log($e->getMessage());
-            return [];
+    protected function validateItems(array $items) {
+        $valid = 1;
+        foreach($items as $item) {
+            $product = $this->productRepository->get($item->getSku());
+            $dimensions = $this->getProductDimensions($product);
+            $valid = (($dimensions['width'] * 2) + ($dimensions['height'] * 2) + $dimensions['length']) > 165
+                ? 0 : $valid;
         }
+        return $valid;
     }
 
     protected function getFormattedPackages(array $packages): array
