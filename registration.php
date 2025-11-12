@@ -7,7 +7,6 @@ ComponentRegistrar::register(
     'Flagship_Shipping',
     __DIR__
 );
-require BP.'/vendor/autoload.php';
 
 define('FLAGSHIP_MODULE', 'Magento');
 define('FLAGSHIP_MODULE_VERSION', '2.0.3');

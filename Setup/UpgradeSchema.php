@@ -11,7 +11,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
     public function upgrade(SchemaSetupInterface $setup, ModuleContextInterface $context): bool
     {
         $setup->startSetup();
-        $tableName = $setup->getTable('sales_shipment');
+        $tableName = $setup->getTable('sales_order');
         $columnName = 'flagship_shipment_id';
         if ($setup->getConnection()->tableColumnExists($tableName, $columnName) === false) {
             $setup->getConnection()->addColumn(

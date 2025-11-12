@@ -2,7 +2,13 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
     <type name="Magento\Backend\Block\Widget\Button\Toolbar">
         <plugin name="fs_ship_button"
-                type="Flagship\Shipping\Plugin\Adminhtml\Order\View\FlagshipButtonPlugin"
-                sortOrder="10"/>
+                type="Flagship\Shipping\Plugin\Adminhtml\Order\Shipment\View\FlagshipButtonPlugin"
+                sortOrder="10"
+                />
+        
+        <!-- <plugin name="fs_ship_button_1"
+                type="Flagship\Shipping\Plugin\Adminhtml\Order\Shipment\View\FSButtonPlugin"
+                sortOrder="5" disabled="false" />
+         -->
     </type>
 </config>

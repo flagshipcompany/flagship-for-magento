@@ -22,11 +22,15 @@ use Magento\Catalog\Model\ProductRepository;
 use Magento\Customer\Api\AddressRepositoryInterface;
 use Flagship\Shipping\Service\ApiService;
 use Magento\Backend\App\Action;
+use Magento\Sales\Model\Order\ShipmentRepository;
+use Magento\Framework\App\Response\RedirectInterface;
+use Magento\Framework\Controller\Result\JsonFactory as ResultJsonFactory;
 
 class Index extends Action
 {
     protected $orderId;
     protected $order;
+    protected $fsId;
 
     public function __construct(
         protected Context $context,
@@ -47,7 +51,10 @@ class Index extends Action
         protected ProductRepository $productRepository,
         protected AddressRepositoryInterface $addressRepository,
         protected Configuration $configuration,
-        protected ApiService $apiService
+        protected ApiService $apiService,
+        protected ShipmentRepository $shipmentRepository,
+        protected RedirectInterface $redirect,
+        protected ResultJsonFactory $resultJsonFactory
     ) {
         parent::__construct($context);
     }
@@ -56,8 +63,18 @@ class Index extends Action
     {
         $orderId = $this->getRequest()->getParam('order_id');
         $payload = $this->getPayload($orderId);
-        $fsShipment = $this->prepareShipment($payload);
-        return $this->_redirect($this->getUrl('sales/order/view', ['order_id' => $orderId]));
+        $fsId = $this->prepareShipment($payload);
+        $order = $this->getOrder();
+
+        $order->setData('flagship_shipment_id', $fsId);
+        $this->orderRepository->save($order);
+
+        $resultJson = $this->resultJsonFactory->create();
+
+        return $resultJson->setData([
+            'success' => true,
+            'message' => __("FlagShip Shipment Number: " . $this->fsId . " . Please submit the shipment to proceed.")
+        ]);
     }
 
     public function getOrder()
@@ -111,7 +128,6 @@ class Index extends Action
     {
 
         $itemsArray = $this->flagshipQuote->getItemsArray($items);
-
         $packages = [
             "items" => $itemsArray,
             "units" => $this->getPackageUnits(),
@@ -127,38 +143,6 @@ class Index extends Action
         $state = $this->regionFactory->create()->load($regionId);
         $stateCode = $state->getCode();
         return $stateCode;
-    }
-
-    // Creates Magento Shipment
-    public function createShipment(int $flagship_shipment_id, int $confirmed = 0): \Magento\Sales\Model\Order\Shipment
-    {
-        $order = $this->order;
-        $items = $order->getAllVisibleItems();
-        $shipment = $this->convertOrder->toShipment($order);
-
-        foreach ($items as $item) {
-            $qtyShipped = $item->getProductType() == 'configurable' && $item->getQtyToShip() == 0 ? $item->getSimpleQtyToShip() : $item->getQtyToShip();
-            $shipmentItem = $this->convertOrder->itemToShipmentItem($item)->setQty($qtyShipped);
-            $shipment->addItem($shipmentItem);
-        }
-
-        $shipment->register();
-
-        $shipment->getOrder()->setIsInProcess(true);
-        $shipmentExtension = $shipment->getExtensionAttributes();
-        
-        if (empty($shipmentExtension)) {
-            $shipmentExtension = $this->shipmentExtensionFactory->create();
-        }
-
-        $shipment->setExtensionAttributes($shipmentExtension);
-        $shipment->setData('flagship_shipment_id', $flagship_shipment_id);
-
-        // if ($confirmed == 0) {
-        //     $shipment = $this->setTrackingDetails($flagship_shipment_id, $shipment);
-        // }
-        $shipment->save();
-        return $shipment;
     }
 
     protected function getPayment(): array
@@ -222,25 +206,26 @@ class Index extends Action
 
     protected function getSender(\Magento\Store\Model\Store $store): array
     {
-        $country = $store->getConfig('general/store_information/country_id');
+        $sourceCode = $this->getRequest()->getParam('source_code');
+        $source = $this->sourceRepository->get($sourceCode);
+        $country = $source->getCountryId();
 
-        $stateCode = $store->getConfig('general/store_information/region_id');
+        $stateCode = $source->getRegionId();
         $state = empty($stateCode) ? $stateCode : $this->getStateCode($stateCode);
 
-        $name  =  substr($store->getConfig('general/store_information/name'), 0, 29);
-        $attn = substr($name, 0, 20);
-        $address = $store->getConfig('general/store_information/street_line1');
-        $suite = is_null($store->getConfig('general/store_information/street_line2')) ? '' : $store->getConfig('general/store_information/street_line2');
-        $city = $store->getConfig('general/store_information/city');
+        $name  = $source->getContactName() ?? substr($store->getConfig('general/store_information/name') ?? '', 0, 29);
+        $attn = substr($name??'', 0, 20);
+        $address = $source->getStreet();
+        $city = $source->getCity();
         $city = $this->flagshipQuote->removeAccents($city);
-        $postcode = $store->getConfig('general/store_information/postcode');
-        $phone = $store->getConfig('general/store_information/phone');
+        $postcode = $source->getPostcode();
+        $phone = $source->getPhone();
 
         $from = [
           'name' => substr($name, 0, 29),
-          'attn' => substr($name, 0, 20),
+          'attn' => $attn,
           'address' => substr($address, 0, 29),
-          'suite' => substr($suite, 0, 17),
+          'suite' => substr($suite ?? '', 0, 17),
           'city' => substr($city, 0, 29),
           'country' => $country,
           'state' => $state,
@@ -258,9 +243,7 @@ class Index extends Action
             $token = $this->configuration->getToken();
             $response = $this->apiService->sendRequest('/ship/prepare', $token, 'POST', $payload);
             $id = $response['response']['content']['id'];
-            $this->createShipment($id);
-
-            return $this->messageManager->addSuccess(__('FlagShip Shipment Number:' . $id . ' . Please confirm the shipment'));
+            return $id;
         } catch (\Exception $e) {
             return $this->messageManager->addErrorMessage(__(ucfirst($e->getMessage())));
         }
@@ -277,12 +260,14 @@ class Index extends Action
         $order = $this->getOrder();
         $shippingAddressDetails = $order->getShippingAddress();
         $shippingAddressDetails = is_null($shippingAddressDetails) ? $order->getBillingAddress() : $shippingAddressDetails;
+
         return $shippingAddressDetails;
     }
 
     protected function getStore(): \Magento\Framework\DataObject
     {
         $store = $this->getOrder()->getStore();
+
         return $store;
     }
 
@@ -297,6 +282,7 @@ class Index extends Action
             $shipment->addTrack($this->addShipmentTracking($flagship_shipment_id));
             $shipment->addComment('FlagShip Shipment Unconfirmed');
             $shipment->save();
+
             return $shipment;
         } catch (\Exception $e) {
             throw new \Magento\Framework\Exception\LocalizedException(__($e->getMessage()));
