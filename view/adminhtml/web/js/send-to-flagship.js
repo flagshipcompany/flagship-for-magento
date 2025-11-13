@@ -19,7 +19,7 @@ define([
                 uiAlert({ title: $t('FlagShip'), content: message });
             },
             error: function (xhr) {
-                let message = $t('An error occurred while sending to FlagShip. Please check the logs for more details.');
+                let message = $t('An error occurred while sending to FlagShip.');
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     message = xhr.responseJSON.message;
                 }

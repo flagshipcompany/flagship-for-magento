@@ -24,6 +24,7 @@ use Flagship\Shipping\Service\ApiService;
 use Magento\Backend\App\Action;
 use Magento\Sales\Model\Order\ShipmentRepository;
 use Magento\Framework\App\Response\RedirectInterface;
+use Magento\Framework\Controller\ResultFactory;
 use Magento\Framework\Controller\Result\JsonFactory as ResultJsonFactory;
 
 class Index extends Action
@@ -73,7 +74,7 @@ class Index extends Action
 
         return $resultJson->setData([
             'success' => true,
-            'message' => __("FlagShip Shipment Number: " . $this->fsId . " . Please submit the shipment to proceed.")
+            'message' => __("FlagShip Shipment Number: " . $fsId . " . Please submit the shipment to proceed.")
         ]);
     }
 
@@ -209,17 +210,15 @@ class Index extends Action
         $sourceCode = $this->getRequest()->getParam('source_code');
         $source = $this->sourceRepository->get($sourceCode);
         $country = $source->getCountryId();
-
         $stateCode = $source->getRegionId();
         $state = empty($stateCode) ? $stateCode : $this->getStateCode($stateCode);
-
         $name  = $source->getContactName() ?? substr($store->getConfig('general/store_information/name') ?? '', 0, 29);
-        $attn = substr($name??'', 0, 20);
-        $address = $source->getStreet();
-        $city = $source->getCity();
+        $attn = substr($name ?? '', 0, 20);
+        $address = $source->getStreet() ?? $store->getConfig('general/store_information/street_line1');
+        $city = $source->getCity() ?? $store->getConfig('general/store_information/city') ?? '';
         $city = $this->flagshipQuote->removeAccents($city);
         $postcode = $source->getPostcode();
-        $phone = $source->getPhone();
+        $phone = $source->getPhone() ?? $store->getConfig('general/store_information/phone');
 
         $from = [
           'name' => substr($name, 0, 29),
@@ -243,7 +242,7 @@ class Index extends Action
             $token = $this->configuration->getToken();
             $response = $this->apiService->sendRequest('/ship/prepare', $token, 'POST', $payload);
             $id = $response['response']['content']['id'];
-            return $id;
+            return $id; 
         } catch (\Exception $e) {
             return $this->messageManager->addErrorMessage(__(ucfirst($e->getMessage())));
         }
@@ -260,14 +259,12 @@ class Index extends Action
         $order = $this->getOrder();
         $shippingAddressDetails = $order->getShippingAddress();
         $shippingAddressDetails = is_null($shippingAddressDetails) ? $order->getBillingAddress() : $shippingAddressDetails;
-
         return $shippingAddressDetails;
     }
 
     protected function getStore(): \Magento\Framework\DataObject
     {
         $store = $this->getOrder()->getStore();
-
         return $store;
     }
 
@@ -282,7 +279,6 @@ class Index extends Action
             $shipment->addTrack($this->addShipmentTracking($flagship_shipment_id));
             $shipment->addComment('FlagShip Shipment Unconfirmed');
             $shipment->save();
-
             return $shipment;
         } catch (\Exception $e) {
             throw new \Magento\Framework\Exception\LocalizedException(__($e->getMessage()));

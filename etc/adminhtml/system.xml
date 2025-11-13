@@ -7,7 +7,7 @@
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Enabled</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment>Rates will not be available unless FlagShip is configured with a valid token</comment>
+                    <comment>Rates are calculated using store information as sender address. When sending shipment information to FlagShip, source details are used.</comment>
                 </field>
                 <field id="title" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Title</label>
@@ -18,6 +18,8 @@
                 </field>
                 <field id="token" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Flagship token</label>
+                    <comment>You need a valid FlagShip token to use this shipping method. Generate a token from your FlagShip account.
+                    </comment>
                 </field>
                 <field id="insurance" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Insure shipments</label>
