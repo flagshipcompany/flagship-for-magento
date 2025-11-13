@@ -9,4 +9,4 @@ ComponentRegistrar::register(
 );
 
 define('FLAGSHIP_MODULE', 'Magento');
-define('FLAGSHIP_MODULE_VERSION', '2.0.3');
+define('FLAGSHIP_MODULE_VERSION', '2.0.4');
